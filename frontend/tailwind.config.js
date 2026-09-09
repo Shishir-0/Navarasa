@@ -8,39 +8,49 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#050811",
-        panel: "#0B1220",
-        glass: "rgba(15, 25, 40, 0.55)",
+        background: "#070a13",
+        surface: "#0d1322",
+        panel: "#0d1322",
+        glass: "rgba(13, 19, 34, 0.65)",
         cyber: {
-          cyan: "#00E5FF",
-          emerald: "#00FF88",
-          amber: "#FFB700",
-          crimson: "#FF0055",
-          purple: "#A855F7",
-          blue: "#3B82F6",
+          cyan: "#00f0ff",
+          emerald: "#00ff88",
+          amber: "#ffb700",
+          crimson: "#ff0055",
+          purple: "#a855f7",
+          blue: "#3b82f6",
         },
         hud: {
           text: "#F5FAFF",
           secondary: "#9FB6CC",
           border: "rgba(30, 41, 59, 0.8)",
-          grid: "rgba(0, 229, 255, 0.07)",
+          grid: "rgba(0, 240, 255, 0.05)",
         },
+        // Direct tokens
+        "brand-bg": "#070a13",
+        "panel-bg": "#0d1322",
+        "panel-border": "#1E293B",
+        "cyan": "#00f0ff",
+        "emerald": "#00ff88",
+        "amber": "#ffb700",
+        "crimson": "#ff0055",
       },
       fontFamily: {
         mono: ["JetBrains Mono", "Fira Code", "Courier New", "monospace"],
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       boxShadow: {
-        "cyan-glow": "0 0 20px -3px rgba(0, 229, 255, 0.35)",
-        "emerald-glow": "0 0 20px -3px rgba(0, 255, 136, 0.35)",
-        "crimson-glow": "0 0 20px -3px rgba(255, 0, 85, 0.4)",
-        "amber-glow": "0 0 20px -3px rgba(255, 183, 0, 0.35)",
-        "panel-glow": "0 8px 32px 0 rgba(0, 0, 0, 0.6)",
+        "cyan-glow": "0 0 25px -3px rgba(0, 240, 255, 0.35)",
+        "emerald-glow": "0 0 25px -3px rgba(0, 255, 136, 0.35)",
+        "crimson-glow": "0 0 25px -3px rgba(255, 0, 85, 0.4)",
+        "amber-glow": "0 0 25px -3px rgba(255, 183, 0, 0.35)",
+        "panel-glow": "0 8px 32px 0 rgba(0, 0, 0, 0.7)",
       },
       animation: {
-        "pulse-fast": "pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "scan-line": "scanline 4s linear infinite",
+        "pulse-fast": "pulse 1.0s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "scan-line": "scanline 6s linear infinite",
         "radar-sweep": "radarSweep 3s linear infinite",
+        "shockwave": "shockwave 1.5s cubic-bezier(0.1, 0.8, 0.3, 1) infinite",
       },
       keyframes: {
         scanline: {
@@ -50,6 +60,10 @@ export default {
         radarSweep: {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
+        },
+        shockwave: {
+          "0%": { transform: "scale(1)", opacity: "0.8" },
+          "100%": { transform: "scale(1.8)", opacity: "0" },
         },
       },
     },

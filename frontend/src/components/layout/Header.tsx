@@ -1,126 +1,143 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTelemetryStore } from "../../store/telemetryStore";
 import { usePlaybackStore } from "../../store/playbackStore";
+import { PerformanceHUD } from "../common/PerformanceHUD";
+import { LiveClockWidget } from "../common/LiveClockWidget";
+import { ExportSession } from "../common/ExportSession";
+import { ScenarioCardGrid, SCENARIO_BENCHMARKS } from "./ScenarioCardGrid";
 import {
-  Play,
-  Pause,
-  RotateCcw,
+  Activity,
+  Compass,
   Radio,
   ShieldAlert,
   ShieldCheck,
-  Activity,
-  Layers,
+  X,
+  Sparkles,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 
 export const Header: React.FC = () => {
-  const { latestFrame, isConnected, activeScenarioId, setScenario, scenarios } = useTelemetryStore();
-  const { isPlaying, togglePlay } = usePlaybackStore();
+  const { latestFrame, isConnected, activeScenarioId } = useTelemetryStore();
+  const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
 
+  const activeScenario = SCENARIO_BENCHMARKS.find((s) => s.id === activeScenarioId) || SCENARIO_BENCHMARKS[0];
   const cbfActive = latestFrame?.control_command?.cbf_active ?? false;
-  const fps = latestFrame?.metrics?.fps ?? 0;
-  const latency = latestFrame?.metrics?.total_pipeline_latency_ms ?? 0;
 
   return (
-    <header className="h-16 border-b border-slate-800/80 bg-panel/95 backdrop-blur-md px-4 flex items-center justify-between z-30 sticky top-0">
-      {/* Brand & Logo */}
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyber-cyan to-blue-600 flex items-center justify-center shadow-cyan-glow">
-          <Activity className="w-5 h-5 text-slate-950 font-bold" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-extrabold font-mono tracking-wider text-hud-text">
-              NAVRASA
-            </h1>
-            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan">
-              v2.0 MISSION CONTROL
-            </span>
+    <>
+      <header className="h-16 border-b border-slate-800 bg-panel/95 backdrop-blur-md px-4 flex items-center justify-between z-30 sticky top-0 font-mono">
+        {/* Left: Brand Logo & Title */}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyber-cyan via-blue-600 to-indigo-700 flex items-center justify-center shadow-cyan-glow">
+            <Activity className="w-5 h-5 text-slate-950 font-bold" />
           </div>
-          <p className="text-[11px] text-hud-secondary font-mono tracking-tight hidden sm:block">
-            Neural Adaptive Vehicular Reasoning with Anticipatory Scene Awareness
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-extrabold tracking-wider text-white">
+                NAVRASA
+              </h1>
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-cyber-cyan/15 border border-cyber-cyan/40 text-cyber-cyan shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                v3.0 OPS CONSOLE
+              </span>
+            </div>
+            <p className="text-[10px] text-hud-secondary tracking-tight hidden lg:block">
+              Neural Adaptive Vehicular Reasoning with Anticipatory Scene Awareness
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Center Controls: Scenario Selector & Playback */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-1">
-          <select
-            value={activeScenarioId}
-            onChange={(e) => setScenario(e.target.value)}
-            className="bg-transparent text-xs font-mono text-hud-text px-2 py-1 outline-none cursor-pointer"
+        {/* Center: Scenario Selector Trigger & Clock */}
+        <div className="flex items-center gap-3">
+          {/* Interactive Scenario Trigger Button */}
+          <button
+            onClick={() => setIsScenarioModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-cyber-cyan text-xs text-white hover:bg-slate-800 transition-all shadow-sm group cursor-pointer"
           >
-            {scenarios.map((s) => (
-              <option key={s.id} value={s.id} className="bg-panel text-hud-text">
-                {s.name}
-              </option>
-            ))}
-          </select>
+            <Compass className="w-4 h-4 text-cyber-cyan group-hover:rotate-45 transition-transform" />
+            <div className="text-left">
+              <div className="text-[9px] text-slate-400 uppercase font-sans">Scenario Benchmark</div>
+              <div className="text-xs font-bold text-white truncate max-w-[170px]">
+                {activeScenario?.name}
+              </div>
+            </div>
+          </button>
+
+          {/* Live Simulation Clock Widget */}
+          <LiveClockWidget className="hidden md:flex" />
         </div>
 
-        <button
-          onClick={togglePlay}
-          className={clsx(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all duration-200 border",
-            isPlaying
-              ? "bg-cyber-cyan/15 text-cyber-cyan border-cyber-cyan/40 hover:bg-cyber-cyan/25"
-              : "bg-amber-500/15 text-cyber-amber border-amber-500/40 hover:bg-amber-500/25"
-          )}
-        >
-          {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-          <span>{isPlaying ? "LIVE" : "PAUSED"}</span>
-        </button>
-      </div>
+        {/* Right: Performance HUD, Session Export & Connection Badge */}
+        <div className="flex items-center gap-3">
+          {/* Live Performance HUD */}
+          <PerformanceHUD />
 
-      {/* Right Stats: CBF Shield status, FPS, Latency, Connection */}
-      <div className="flex items-center gap-3">
-        {/* CBF Status Badge */}
-        <div
-          className={clsx(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all duration-300",
-            cbfActive
-              ? "bg-cyber-crimson/20 border-cyber-crimson text-cyber-crimson animate-pulse shadow-crimson-glow"
-              : "bg-cyber-emerald/15 border-cyber-emerald/40 text-cyber-emerald shadow-emerald-glow"
-          )}
-        >
-          {cbfActive ? (
-            <>
-              <ShieldAlert className="w-4 h-4" />
-              <span>CBF INTERVENTION</span>
-            </>
-          ) : (
-            <>
-              <ShieldCheck className="w-4 h-4" />
-              <span>CBF NOMINAL</span>
-            </>
-          )}
-        </div>
+          {/* Export Session */}
+          <ExportSession className="hidden xl:flex" />
 
-        {/* FPS & Latency */}
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-hud-secondary">
-          <span>
-            FPS: <strong className="text-cyber-cyan">{fps.toFixed(1)}</strong>
-          </span>
-          <span className="text-slate-700">|</span>
-          <span>
-            Latency: <strong className="text-cyber-emerald">{latency.toFixed(1)}ms</strong>
-          </span>
-        </div>
-
-        {/* Live Network Gateway Status */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px] font-mono">
-          <Radio
+          {/* Connection Status */}
+          <div
             className={clsx(
-              "w-3.5 h-3.5",
-              isConnected ? "text-cyber-emerald animate-pulse" : "text-amber-400"
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold",
+              isConnected
+                ? "bg-cyber-emerald/15 text-cyber-emerald border-cyber-emerald/40"
+                : "bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30"
             )}
-          />
-          <span className={isConnected ? "text-cyber-emerald" : "text-amber-400"}>
-            {isConnected ? "WS STREAM" : "LOCAL SIM"}
-          </span>
+            title={isConnected ? "Connected to FastAPI WebSocket" : "Running Standalone Client Simulation"}
+          >
+            <Radio className="w-3.5 h-3.5 animate-pulse" />
+            <span className="hidden sm:inline">{isConnected ? "ONLINE" : "SIM"}</span>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Scenario Benchmark Selection Modal */}
+      <AnimatePresence>
+        {isScenarioModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-5xl bg-panel-bg border border-slate-700 rounded-2xl p-6 shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan">
+                    <Compass className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                      Indian Road Benchmark Scenarios
+                      <span className="text-xs px-2 py-0.5 rounded bg-cyber-cyan/20 text-cyber-cyan font-normal">
+                        8 Scenarios Available
+                      </span>
+                    </h2>
+                    <p className="text-xs text-hud-secondary font-sans mt-0.5">
+                      Select an unstructured scenario to evaluate GNN negotiation, potential field risk, and CBF safety interventions.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsScenarioModalOpen(false)}
+                  className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scenario Cards Grid */}
+              <div className="flex-1 overflow-y-auto pr-1">
+                <ScenarioCardGrid
+                  onSelectScenario={() => setIsScenarioModalOpen(false)}
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };

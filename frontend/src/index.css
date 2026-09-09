@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    background-color: #050811;
+    background-color: #070a13;
     color: #F5FAFF;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
@@ -16,26 +16,26 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0B1220;
+    background: #0d1322;
   }
   ::-webkit-scrollbar-thumb {
     background: #1E293B;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #00E5FF;
+    background: #00f0ff;
   }
 }
 
 @layer utilities {
   .cyber-glass {
-    background: rgba(11, 18, 32, 0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(30, 41, 59, 0.7);
+    background: rgba(13, 19, 34, 0.75);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(30, 41, 59, 0.75);
   }
   
   .cyber-glow-cyan {
-    box-shadow: 0 0 25px -4px rgba(0, 229, 255, 0.45);
+    box-shadow: 0 0 25px -4px rgba(0, 240, 255, 0.45);
   }
   
   .cyber-glow-emerald {
@@ -48,8 +48,24 @@
 
   .cyber-grid-bg {
     background-image: 
-      linear-gradient(to right, rgba(0, 229, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(0, 229, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(to right, rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
     background-size: 32px 32px;
+  }
+
+  .scanlines {
+    position: relative;
+    overflow: hidden;
+  }
+  .scanlines::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    z-index: 20;
+    background-size: 100% 3px, 3px 100%;
+    pointer-events: none;
+    opacity: 0.6;
   }
 }
