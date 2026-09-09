@@ -1,5 +1,5 @@
 """
-NAVRASA Central Autonomy Engine & Integrated Pipeline Coordinator.
+NAVRASA Central Autonomy Engine & Integrated Telemetry Pipeline Coordinator.
 
 Orchestrates the complete research-grade autonomy loop:
 Simulation / Sensors -> Perception -> Multi-Target Tracker (KF/UKF) ->
@@ -7,7 +7,7 @@ Road Intent Graph (NetworkX) -> GNN Relational Reasoning (PyTorch) ->
 Future Road Composer (Multi-modal) -> Dynamic 2D Risk Field ->
 Hierarchical Planning (Kinodynamic Hybrid A*) -> Spline Optimization ->
 Model Predictive Control (MPC) -> Control Barrier Functions (CBF-QP) ->
-Persistence & Live Telemetry Streaming.
+Persistence & Telemetry Bus Broadcasting.
 """
 
 from __future__ import annotations
@@ -31,6 +31,8 @@ from backend.core.types import (
 )
 from backend.core.config import load_config, NavrasaConfig
 from backend.database import NavrasaDatabase
+from backend.telemetry_bus import TelemetryBus, TelemetryEvent, TelemetryTopic, global_telemetry_bus
+from backend.decision_timeline import global_decision_timeline
 from simulation.synthetic_world import SyntheticWorld
 from simulation.scenarios import get_scenario_by_id
 from tracking.tracker import MultiTargetTracker
@@ -42,7 +44,6 @@ from planning.hybrid_a_star import KinodynamicHybridAStar
 from planning.polynomial_spline import QuinticTrajectoryOptimizer
 from control.mpc import ModelPredictiveController
 from control.cbf import ControlBarrierFunctionShield
-from api.server import set_current_frame, broadcast_frame
 
 logger = logging.getLogger("NAVRASA.Engine")
 
@@ -50,9 +51,15 @@ logger = logging.getLogger("NAVRASA.Engine")
 class NavrasaAutonomyEngine:
     """Central Real-Time Execution Engine for NAVRASA."""
 
-    def __init__(self, config: Optional[NavrasaConfig] = None, db_path: str = "navrasa_replay.db"):
+    def __init__(
+        self,
+        config: Optional[NavrasaConfig] = None,
+        db_path: str = "navrasa_replay.db",
+        bus: Optional[TelemetryBus] = None
+    ):
         self.config = config or load_config()
         self.db = NavrasaDatabase(db_path=db_path)
+        self.bus = bus or global_telemetry_bus
 
         # Initialize Subsystems
         self.world = SyntheticWorld()
@@ -86,45 +93,124 @@ class NavrasaAutonomyEngine:
             self.frame_id = 0
             self.cbf_interventions_count = 0
             self.tracker = MultiTargetTracker(self.config.tracking)
+            self.bus.clear()
             logger.info(f"Loaded scenario: {self.active_scenario_name}")
 
     def step(self, dt: float = 0.05) -> FrameBundle:
         """
-        Executes one complete frame of the end-to-end NAVRASA autonomy pipeline.
+        Executes one complete frame of the end-to-end NAVRASA autonomy pipeline
+        and broadcasts structured events over the TelemetryBus.
         """
         t_total_start = time.perf_counter()
         self.frame_id += 1
+        sim_time = self.world.sim_time
 
         # 1. Simulation & Sensor Acquisition
         ego_state = self.world.get_ego_state()
         raw_detections = self.world.generate_sensor_detections()
 
-        # 2. Multi-Target Tracking
+        self.bus.publish(
+            TelemetryTopic.RAW_FRAME,
+            TelemetryEvent(
+                topic=TelemetryTopic.RAW_FRAME,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload={"ego": ego_state, "detections": raw_detections},
+                metadata={"scenario": self.active_scenario_name}
+            )
+        )
+
+        # 2. Multi-Target Tracking (KF + UKF Lifecycle)
         t_track_start = time.perf_counter()
         tracks = self.tracker.step(raw_detections, dt=dt)
         t_track = (time.perf_counter() - t_track_start) * 1000.0
 
+        self.bus.publish(
+            TelemetryTopic.TRACKS_UPDATED,
+            TelemetryEvent(
+                topic=TelemetryTopic.TRACKS_UPDATED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=tracks,
+                metadata={"active_count": len(tracks), "latency_ms": t_track}
+            )
+        )
+
         # 3. Road Intent Graph Construction & GNN Relational Reasoning
         t_graph_start = time.perf_counter()
-        raw_graph = self.graph_builder.build_graph(ego_state, tracks, timestamp=self.world.sim_time)
+        raw_graph = self.graph_builder.build_graph(ego_state, tracks, timestamp=sim_time)
+        self.bus.publish(
+            TelemetryTopic.GRAPH_UPDATED,
+            TelemetryEvent(
+                topic=TelemetryTopic.GRAPH_UPDATED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=raw_graph
+            )
+        )
+
         intent_graph = self.gnn_reasoner.reason_over_graph(raw_graph)
         t_graph = (time.perf_counter() - t_graph_start) * 1000.0
 
-        # 4. Future Road Composer (FRC)
+        self.bus.publish(
+            TelemetryTopic.GNN_REASONED,
+            TelemetryEvent(
+                topic=TelemetryTopic.GNN_REASONED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=intent_graph,
+                metadata={"latency_ms": t_graph}
+            )
+        )
+
+        # 4. Future Road Composer (FRC Multi-Modal Trajectory Generation)
         t_pred_start = time.perf_counter()
-        predictions = self.future_composer.generate_scene_predictions(tracks, intent_graph, timestamp=self.world.sim_time)
+        predictions = self.future_composer.generate_scene_predictions(tracks, intent_graph, timestamp=sim_time)
         t_pred = (time.perf_counter() - t_pred_start) * 1000.0
+
+        self.bus.publish(
+            TelemetryTopic.PREDICTIONS_COMPLETED,
+            TelemetryEvent(
+                topic=TelemetryTopic.PREDICTIONS_COMPLETED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=predictions,
+                metadata={"latency_ms": t_pred}
+            )
+        )
 
         # 5. Dynamic 2D Spatial Risk Field
         t_risk_start = time.perf_counter()
-        risk_map = self.risk_field_gen.generate_risk_map(ego_state, tracks, predictions, timestamp=self.world.sim_time)
+        risk_map = self.risk_field_gen.generate_risk_map(ego_state, tracks, predictions, timestamp=sim_time)
         t_risk = (time.perf_counter() - t_risk_start) * 1000.0
+
+        self.bus.publish(
+            TelemetryTopic.RISK_FIELD_GENERATED,
+            TelemetryEvent(
+                topic=TelemetryTopic.RISK_FIELD_GENERATED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=risk_map,
+                metadata={"latency_ms": t_risk}
+            )
+        )
 
         # 6. Hierarchical Planning (Kinodynamic Hybrid A*)
         t_plan_start = time.perf_counter()
         start_pose = (ego_state.position.x, ego_state.position.y, ego_state.heading)
         plan_state = self.planner.plan(start_pose, self.target_goal, tracks, risk_map)
         t_plan = (time.perf_counter() - t_plan_start) * 1000.0
+
+        self.bus.publish(
+            TelemetryTopic.PLAN_REPLANNED,
+            TelemetryEvent(
+                topic=TelemetryTopic.PLAN_REPLANNED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=plan_state,
+                metadata={"latency_ms": t_plan, "is_replan": plan_state.is_replan}
+            )
+        )
 
         # 7. Safety-Critical Control (MPC + CBF Shield)
         t_ctrl_start = time.perf_counter()
@@ -136,9 +222,19 @@ class NavrasaAutonomyEngine:
 
         if cbf_active:
             self.cbf_interventions_count += 1
+            self.bus.publish(
+                TelemetryTopic.SAFETY_OVERRIDE,
+                TelemetryEvent(
+                    topic=TelemetryTopic.SAFETY_OVERRIDE,
+                    frame_id=self.frame_id,
+                    timestamp=sim_time,
+                    payload={"slack": slack, "margin": min_margin},
+                    metadata={"reason": "CBF safety barrier violation"}
+                )
+            )
 
         control_cmd = ControlCommand(
-            timestamp=self.world.sim_time,
+            timestamp=sim_time,
             steering_angle=safe_steer,
             acceleration=safe_accel,
             throttle=max(0.0, safe_accel / 3.0) if safe_accel > 0 else 0.0,
@@ -174,7 +270,7 @@ class NavrasaAutonomyEngine:
 
         bundle = FrameBundle(
             frame_id=self.frame_id,
-            timestamp=self.world.sim_time,
+            timestamp=sim_time,
             ego_state=ego_state,
             raw_detections=raw_detections,
             tracks=tracks,
@@ -187,9 +283,27 @@ class NavrasaAutonomyEngine:
             decision_narrative=narrative
         )
 
-        # Persist & Broadcast
+        # Publish final control & record frame in bus rolling buffer
+        self.bus.publish(
+            TelemetryTopic.CONTROL_SHIELDED,
+            TelemetryEvent(
+                topic=TelemetryTopic.CONTROL_SHIELDED,
+                frame_id=self.frame_id,
+                timestamp=sim_time,
+                payload=control_cmd,
+                metadata={
+                    "tracks": tracks,
+                    "intent_graph": intent_graph,
+                    "planned_trajectory": plan_state,
+                    "min_ttc": min_margin,
+                    "ego_speed": ego_state.speed
+                }
+            )
+        )
+
+        # Record in 300-frame buffer & persist to SQLite
+        self.bus.record_frame(bundle)
         self.db.save_frame(self.current_run_id, bundle)
-        set_current_frame(bundle)
 
         return bundle
 

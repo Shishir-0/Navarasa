@@ -21,12 +21,21 @@ class NavrasaDatabase:
     def __init__(self, db_path: str = "navrasa_replay.db"):
         self.db_path = db_path
         self._lock = threading.Lock()
+        self._mem_conn = sqlite3.connect(self.db_path, check_same_thread=False) if self.db_path == ":memory:" else None
+        if self._mem_conn:
+            self._mem_conn.row_factory = sqlite3.Row
         self._init_schema()
 
     def _get_connection(self) -> sqlite3.Connection:
+        if self._mem_conn is not None:
+            return self._mem_conn
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         return conn
+
+    def _close(self, conn: sqlite3.Connection) -> None:
+        if self._mem_conn is None:
+            conn.close()
 
     def _init_schema(self):
         with self._lock:
@@ -168,7 +177,7 @@ class NavrasaDatabase:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_run_frame ON intent_graph_edges(run_id, frame_id)")
 
             conn.commit()
-            conn.close()
+            self._close(conn)
 
     def start_run(self, run_id: str, scenario_id: str, scenario_name: str):
         """Registers a new simulation or road drive run."""
@@ -180,7 +189,7 @@ class NavrasaDatabase:
                 VALUES (?, ?, ?)
             """, (run_id, scenario_id, scenario_name))
             conn.commit()
-            conn.close()
+            self._close(conn)
 
     def save_frame(self, run_id: str, bundle: FrameBundle):
         """Persists an integrated atomic frame bundle across normalized relational tables."""
@@ -261,7 +270,7 @@ class NavrasaDatabase:
             ))
 
             conn.commit()
-            conn.close()
+            self._close(conn)
 
     def get_run_frames(self, run_id: str) -> List[Dict[str, Any]]:
         """Retrieves summary time series of frames for a given run."""
@@ -270,5 +279,5 @@ class NavrasaDatabase:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM frames WHERE run_id = ? ORDER BY frame_id ASC", (run_id,))
             rows = [dict(r) for r in cursor.fetchall()]
-            conn.close()
+            self._close(conn)
             return rows

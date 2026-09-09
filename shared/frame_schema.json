@@ -1,0 +1,338 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NavrasaFrameBundle",
+  "description": "Standardized, version-locked data contract between CARLA / Sensor Simulators and the NAVRASA Autonomy Platform.",
+  "type": "object",
+  "version": "1.0.0",
+  "required": [
+    "version",
+    "frame_id",
+    "timestamp",
+    "scenario",
+    "ego",
+    "actors",
+    "camera",
+    "lidar",
+    "radar"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    },
+    "frame_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Simulation epoch time in seconds (high precision float)."
+    },
+    "scenario": {
+      "type": "string",
+      "description": "Benchmark scenario identifier (e.g. autorickshaw_cutin_blindspot, unmarked_intersection_chaos, cow_blockage_lateral_nudge, market_crowd)."
+    },
+    "ego": {
+      "$ref": "#/$defs/ActorState"
+    },
+    "actors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ActorState"
+      },
+      "description": "Dynamic, non-ego road participants (vehicles, auto-rickshaws, two-wheelers, pedestrians, cattle, obstacles)."
+    },
+    "camera": {
+      "$ref": "#/$defs/CameraSensorPayload"
+    },
+    "lidar": {
+      "$ref": "#/$defs/LidarSensorPayload"
+    },
+    "radar": {
+      "$ref": "#/$defs/RadarSensorPayload"
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TrackState"
+      }
+    },
+    "intent_graph": {
+      "$ref": "#/$defs/RoadIntentGraph"
+    },
+    "predictions": {
+      "$ref": "#/$defs/PredictionState"
+    },
+    "risk_map": {
+      "$ref": "#/$defs/RiskGridMap"
+    },
+    "planned_trajectory": {
+      "$ref": "#/$defs/PlanState"
+    },
+    "control_command": {
+      "$ref": "#/$defs/ControlCommand"
+    },
+    "metrics": {
+      "$ref": "#/$defs/SystemMetrics"
+    },
+    "decision_narrative": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "Vector2D": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "Vector3D": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number", "default": 0.0 }
+      }
+    },
+    "BoundingBox3D": {
+      "type": "object",
+      "required": ["length", "width", "height"],
+      "properties": {
+        "length": { "type": "number", "minimum": 0.0 },
+        "width": { "type": "number", "minimum": 0.0 },
+        "height": { "type": "number", "minimum": 0.0 }
+      }
+    },
+    "ActorState": {
+      "type": "object",
+      "required": [
+        "actor_id",
+        "actor_type",
+        "position",
+        "heading",
+        "velocity",
+        "speed",
+        "yaw_rate",
+        "acceleration",
+        "bbox"
+      ],
+      "properties": {
+        "actor_id": { "type": "string" },
+        "actor_type": {
+          "type": "string",
+          "enum": [
+            "EGO",
+            "CAR",
+            "AUTORICKSHAW",
+            "TWO_WHEELER",
+            "BUS",
+            "TRUCK",
+            "PEDESTRIAN",
+            "CATTLE",
+            "STATIC_OBSTACLE",
+            "POTHOLE",
+            "BLIND_SPOT"
+          ]
+        },
+        "position": { "$ref": "#/$defs/Vector2D" },
+        "heading": { "type": "number", "description": "Orientation yaw in radians [-pi, pi]." },
+        "velocity": { "$ref": "#/$defs/Vector2D" },
+        "speed": { "type": "number", "minimum": 0.0, "description": "Magnitude in m/s." },
+        "yaw_rate": { "type": "number", "description": "Angular velocity in rad/s." },
+        "acceleration": { "type": "number", "description": "Longitudinal acceleration in m/s^2." },
+        "bbox": { "$ref": "#/$defs/BoundingBox3D" },
+        "is_occluded": { "type": "boolean", "default": false },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 1.0 }
+      }
+    },
+    "SensorDetection": {
+      "type": "object",
+      "required": ["detection_id", "sensor_type", "position", "bbox", "confidence", "covariance"],
+      "properties": {
+        "detection_id": { "type": "string" },
+        "sensor_type": { "type": "string", "enum": ["CAMERA", "LIDAR", "RADAR"] },
+        "position": { "$ref": "#/$defs/Vector2D" },
+        "bbox": { "$ref": "#/$defs/BoundingBox3D" },
+        "heading": { "type": ["number", "null"] },
+        "velocity": { "type": ["object", "null"] },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "covariance": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "number" }
+          }
+        }
+      }
+    },
+    "CameraSensorPayload": {
+      "type": "object",
+      "properties": {
+        "sensor_id": { "type": "string", "default": "cam_front" },
+        "detections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SensorDetection" }
+        },
+        "image_encoded": { "type": ["string", "null"], "description": "Optional base64 JPEG/PNG preview." }
+      }
+    },
+    "LidarSensorPayload": {
+      "type": "object",
+      "properties": {
+        "sensor_id": { "type": "string", "default": "lidar_top" },
+        "detections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SensorDetection" }
+        },
+        "point_count": { "type": "integer", "default": 0 },
+        "points_sample": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Vector3D" },
+          "description": "Downsampled point cloud sample for 3D digital twin visualization."
+        }
+      }
+    },
+    "RadarSensorPayload": {
+      "type": "object",
+      "properties": {
+        "sensor_id": { "type": "string", "default": "radar_front" },
+        "detections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/SensorDetection" }
+        }
+      }
+    },
+    "TrackState": {
+      "type": "object",
+      "required": ["track_id", "actor_type", "status", "state_vector", "covariance_matrix", "position", "velocity", "speed", "heading", "yaw_rate", "bbox", "age", "hits", "misses"],
+      "properties": {
+        "track_id": { "type": "string" },
+        "actor_type": { "type": "string" },
+        "status": { "type": "string", "enum": ["TENTATIVE", "CONFIRMED", "COASTING", "DELETED"] },
+        "state_vector": { "type": "array", "items": { "type": "number" } },
+        "covariance_matrix": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "number" } }
+        },
+        "position": { "$ref": "#/$defs/Vector2D" },
+        "velocity": { "$ref": "#/$defs/Vector2D" },
+        "speed": { "type": "number" },
+        "heading": { "type": "number" },
+        "yaw_rate": { "type": "number" },
+        "bbox": { "$ref": "#/$defs/BoundingBox3D" },
+        "age": { "type": "integer" },
+        "hits": { "type": "integer" },
+        "misses": { "type": "integer" },
+        "time_since_update": { "type": "number", "default": 0.0 },
+        "mahalanobis_distance": { "type": "number", "default": 0.0 }
+      }
+    },
+    "RoadIntentGraph": {
+      "type": "object",
+      "required": ["timestamp", "nodes", "edges", "conflict_hotspots"],
+      "properties": {
+        "timestamp": { "type": "number" },
+        "nodes": { "type": "object" },
+        "edges": { "type": "array" },
+        "conflict_hotspots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Vector2D" }
+        }
+      }
+    },
+    "PredictionState": {
+      "type": "object",
+      "required": ["timestamp", "horizon_seconds", "dt", "predictions"],
+      "properties": {
+        "timestamp": { "type": "number" },
+        "horizon_seconds": { "type": "number" },
+        "dt": { "type": "number" },
+        "predictions": { "type": "object" }
+      }
+    },
+    "RiskGridMap": {
+      "type": "object",
+      "required": ["timestamp", "origin_x", "origin_y", "resolution", "width", "height", "data"],
+      "properties": {
+        "timestamp": { "type": "number" },
+        "origin_x": { "type": "number" },
+        "origin_y": { "type": "number" },
+        "resolution": { "type": "number" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "data": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "number" } }
+        },
+        "grad_x": { "type": ["array", "null"] },
+        "grad_y": { "type": ["array", "null"] }
+      }
+    },
+    "PlanState": {
+      "type": "object",
+      "required": ["timestamp", "planner_type", "waypoints", "is_replan", "planning_time_ms", "path_length", "max_curvature", "max_jerk", "cost", "success"],
+      "properties": {
+        "timestamp": { "type": "number" },
+        "planner_type": { "type": "string" },
+        "waypoints": { "type": "array" },
+        "is_replan": { "type": "boolean" },
+        "planning_time_ms": { "type": "number" },
+        "path_length": { "type": "number" },
+        "max_curvature": { "type": "number" },
+        "max_jerk": { "type": "number" },
+        "cost": { "type": "number" },
+        "success": { "type": "boolean" }
+      }
+    },
+    "ControlCommand": {
+      "type": "object",
+      "required": ["timestamp", "steering_angle", "acceleration", "throttle", "brake", "cbf_active", "cbf_slack", "cbf_safety_margin", "mpc_cost", "mpc_solve_time_ms"],
+      "properties": {
+        "timestamp": { "type": "number" },
+        "steering_angle": { "type": "number" },
+        "acceleration": { "type": "number" },
+        "throttle": { "type": "number" },
+        "brake": { "type": "number" },
+        "cbf_active": { "type": "boolean" },
+        "cbf_slack": { "type": "number" },
+        "cbf_safety_margin": { "type": "number" },
+        "mpc_cost": { "type": "number" },
+        "mpc_solve_time_ms": { "type": "number" }
+      }
+    },
+    "SystemMetrics": {
+      "type": "object",
+      "required": [
+        "fps",
+        "total_pipeline_latency_ms",
+        "tracking_latency_ms",
+        "graph_latency_ms",
+        "prediction_latency_ms",
+        "risk_latency_ms",
+        "planning_latency_ms",
+        "control_latency_ms",
+        "active_tracks_count",
+        "cbf_interventions_total",
+        "tracking_stability_score"
+      ],
+      "properties": {
+        "fps": { "type": "number" },
+        "total_pipeline_latency_ms": { "type": "number" },
+        "tracking_latency_ms": { "type": "number" },
+        "graph_latency_ms": { "type": "number" },
+        "prediction_latency_ms": { "type": "number" },
+        "risk_latency_ms": { "type": "number" },
+        "planning_latency_ms": { "type": "number" },
+        "control_latency_ms": { "type": "number" },
+        "active_tracks_count": { "type": "integer" },
+        "cbf_interventions_total": { "type": "integer" },
+        "min_ttc": { "type": ["number", "null"] },
+        "tracking_stability_score": { "type": "number" }
+      }
+    }
+  }
+}

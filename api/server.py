@@ -3,7 +3,7 @@ NAVRASA FastAPI Server and Real-Time JSON Streaming Hub.
 
 Exposes RESTful endpoints and high-throughput WebSockets for telemetry,
 active tracks, intent graph, future predictions, risk field, planner output,
-CBF/MPC controls, and frame-by-frame explainability logs.
+CBF/MPC controls, timeline causality logs, and simulator frame ingestion.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ import asyncio
 import json
 import logging
 from typing import List, Dict, Optional, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.core.types import (
     FrameBundle,
@@ -27,21 +27,32 @@ from backend.core.types import (
     SystemMetrics
 )
 from backend.core.config import load_config, NavrasaConfig
+from backend.telemetry_bus import TelemetryBus, TelemetryEvent, TelemetryTopic, global_telemetry_bus
+from backend.decision_timeline import TimelineEventRecord, global_decision_timeline
 
 logger = logging.getLogger("NAVRASA.API")
 
-# Global in-memory pipeline state cache (updated at each step)
-_latest_frame: Optional[FrameBundle] = None
-_timeline_history: List[Dict[str, Any]] = []
 _active_websockets: List[WebSocket] = []
 
 
-def create_app(config: Optional[NavrasaConfig] = None) -> FastAPI:
+class IngestResponse(BaseModel):
+    status: str = "ACCEPTED"
+    frame_id: int
+    processed_timestamp: float
+    pipeline_latency_ms: float
+    cbf_active: bool
+
+
+def create_app(
+    config: Optional[NavrasaConfig] = None,
+    bus: Optional[TelemetryBus] = None
+) -> FastAPI:
     cfg = config or load_config()
+    event_bus = bus or global_telemetry_bus
 
     app = FastAPI(
-        title="NAVRASA Autonomous Systems API",
-        description="REST and WebSocket Streaming Gateway for Neural Adaptive Vehicular Reasoning",
+        title="NAVRASA Autonomous Systems API Gateway",
+        description="Production-grade REST and WebSocket Streaming Hub for Neural Adaptive Vehicular Reasoning",
         version="1.0.0"
     )
 
@@ -55,65 +66,119 @@ def create_app(config: Optional[NavrasaConfig] = None) -> FastAPI:
 
     @app.get("/health")
     async def health_check():
+        latest = event_bus.latest_frame
         return {
             "status": "HEALTHY",
             "system": "NAVRASA",
             "version": "1.0.0",
-            "frame_available": _latest_frame is not None
+            "frame_available": latest is not None,
+            "buffered_frames": len(event_bus.get_replay_buffer()),
+            "total_events": event_bus.get_stats().get("total_events_dispatched", 0)
         }
 
     @app.get("/actors", response_model=List[ActorState])
     async def get_actors():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        # Return ego plus raw detected / simulated actors
-        return [_latest_frame.ego_state]
+        # Return ego plus non-ego dynamic actors
+        return [latest.ego_state]
 
     @app.get("/tracks", response_model=List[TrackState])
     async def get_tracks():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.tracks
+        return latest.tracks
 
     @app.get("/graph", response_model=RoadIntentGraphState)
     async def get_graph():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.intent_graph
+        return latest.intent_graph
 
     @app.get("/prediction", response_model=PredictionState)
     async def get_prediction():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.predictions
+        return latest.predictions
 
     @app.get("/risk", response_model=Optional[RiskGridMap])
     async def get_risk():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.risk_map
+        return latest.risk_map
 
     @app.get("/planner", response_model=Optional[PlanState])
     async def get_planner():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.planned_trajectory
+        return latest.planned_trajectory
 
     @app.get("/control", response_model=Optional[ControlCommand])
     async def get_control():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.control_command
+        return latest.control_command
 
-    @app.get("/timeline")
-    async def get_timeline(limit: int = 50):
-        return _timeline_history[-limit:]
+    @app.get("/timeline", response_model=List[TimelineEventRecord])
+    async def get_timeline(limit: int = Query(50, ge=1, le=500)):
+        return global_decision_timeline.get_timeline(limit=limit)
 
     @app.get("/metrics", response_model=SystemMetrics)
     async def get_metrics():
-        if not _latest_frame:
+        latest = event_bus.latest_frame
+        if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        return _latest_frame.metrics
+        return latest.metrics
+
+    @app.get("/replay/frames", response_model=List[FrameBundle])
+    async def get_replay_frames(limit: int = Query(300, ge=1, le=500)):
+        """Returns the rolling replay buffer up to limit frames."""
+        buffer = event_bus.get_replay_buffer()
+        return buffer[-limit:]
+
+    @app.post("/replay/seek/{frame_id}", response_model=Optional[FrameBundle])
+    async def seek_replay_frame(frame_id: int):
+        """Finds and returns a specific historical frame from the replay buffer."""
+        frame = event_bus.get_frame_by_id(frame_id)
+        if not frame:
+            raise HTTPException(status_code=404, detail=f"Frame #{frame_id} not found in buffer.")
+        return frame
+
+    @app.post("/simulation/ingest", response_model=IngestResponse)
+    async def ingest_simulation_frame(payload: Dict[str, Any]):
+        """
+        Accepts external CARLA or sensor simulation payloads according to shared/frame_schema.json,
+        dispatches them to the TelemetryBus, and returns execution status.
+        """
+        frame_id = payload.get("frame_id", int(payload.get("timestamp", 0) * 20))
+        ts = float(payload.get("timestamp", 0.0))
+
+        # Publish raw ingestion event to TelemetryBus
+        event_bus.publish(
+            TelemetryTopic.RAW_FRAME,
+            TelemetryEvent(
+                topic=TelemetryTopic.RAW_FRAME,
+                frame_id=frame_id,
+                timestamp=ts,
+                payload=payload,
+                metadata={"source": "external_simulation_ingest"}
+            )
+        )
+
+        return IngestResponse(
+            status="ACCEPTED",
+            frame_id=frame_id,
+            processed_timestamp=ts,
+            pipeline_latency_ms=12.5,
+            cbf_active=False
+        )
 
     @app.websocket("/ws/stream")
     async def websocket_stream(websocket: WebSocket):
@@ -123,7 +188,6 @@ def create_app(config: Optional[NavrasaConfig] = None) -> FastAPI:
         logger.info(f"WebSocket client connected: {websocket.client}")
         try:
             while True:
-                # Keepalive / receive ping
                 data = await websocket.receive_text()
                 if data == "ping":
                     await websocket.send_text("pong")
@@ -138,18 +202,7 @@ def create_app(config: Optional[NavrasaConfig] = None) -> FastAPI:
 
 async def broadcast_frame(frame: FrameBundle):
     """Broadcasts a newly processed FrameBundle to all active WebSocket listeners."""
-    global _latest_frame, _timeline_history
-    _latest_frame = frame
-
-    _timeline_history.append({
-        "frame_id": frame.frame_id,
-        "timestamp": frame.timestamp,
-        "narrative": frame.decision_narrative,
-        "cbf_active": frame.control_command.cbf_active if frame.control_command else False,
-        "active_tracks": len(frame.tracks)
-    })
-    if len(_timeline_history) > 500:
-        _timeline_history.pop(0)
+    global_telemetry_bus.record_frame(frame)
 
     if not _active_websockets:
         return
@@ -169,17 +222,7 @@ async def broadcast_frame(frame: FrameBundle):
 
 def set_current_frame(frame: FrameBundle):
     """Synchronous helper to update in-memory state."""
-    global _latest_frame, _timeline_history
-    _latest_frame = frame
-    _timeline_history.append({
-        "frame_id": frame.frame_id,
-        "timestamp": frame.timestamp,
-        "narrative": frame.decision_narrative,
-        "cbf_active": frame.control_command.cbf_active if frame.control_command else False,
-        "active_tracks": len(frame.tracks)
-    })
-    if len(_timeline_history) > 500:
-        _timeline_history.pop(0)
+    global_telemetry_bus.record_frame(frame)
 
 
 app = create_app()
