@@ -66,7 +66,7 @@ export const IntentGraphFlow: React.FC<{ height?: string }> = ({ height = "h-[60
     if (!graphState) return [];
 
     return graphState.edges.map((edge, idx) => {
-      const meta = EDGE_COLOR_MAP[edge.edge_type] || { hex: "#64748B", label: edge.edge_type };
+      const meta = EDGE_COLOR_MAP[edge.edge_type] || { hex: "#9BA6B2", label: edge.edge_type };
       const isConflict = edge.edge_type === "CONFLICT";
 
       return {
@@ -77,18 +77,21 @@ export const IntentGraphFlow: React.FC<{ height?: string }> = ({ height = "h-[60
         label: `${edge.edge_type} (${(edge.weight * 100).toFixed(0)}%)`,
         style: {
           stroke: meta.hex,
-          strokeWidth: Math.max(1.5, edge.weight * 3.5),
+          strokeWidth: Math.max(1.8, edge.weight * 3.5),
         },
         labelStyle: {
           fill: meta.hex,
-          fontFamily: "monospace",
+          fontFamily: "Inter, monospace",
           fontSize: 10,
-          fontWeight: 700,
+          fontWeight: 600,
         },
         labelBgStyle: {
-          fill: "#0B1220",
-          fillOpacity: 0.85,
+          fill: "#12161E",
+          fillOpacity: 0.9,
+          rx: 6,
+          ry: 6,
         },
+        labelBgPadding: [6, 4] as [number, number],
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: meta.hex,
@@ -111,7 +114,7 @@ export const IntentGraphFlow: React.FC<{ height?: string }> = ({ height = "h-[60
   }, [setSelectedActorId]);
 
   return (
-    <div className={`w-full ${height} rounded-xl border border-slate-800 bg-[#050811] relative overflow-hidden`}>
+    <div className={`w-full ${height} rounded-2xl border border-white/[0.08] bg-[#05070B] relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)]`}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -124,12 +127,12 @@ export const IntentGraphFlow: React.FC<{ height?: string }> = ({ height = "h-[60
         maxZoom={1.8}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#1E293B" gap={24} size={1} />
-        <Controls className="!bg-panel !border-slate-800 !text-hud-text !fill-hud-text" />
+        <Background color="rgba(255,255,255,0.05)" gap={24} size={1} />
+        <Controls className="!bg-[#12161E]/90 !border-white/[0.1] !backdrop-blur-2xl !text-[#F5F7FA] !fill-[#F5F7FA] !rounded-xl overflow-hidden shadow-lg" />
         <MiniMap
-          nodeColor={(n) => (n.id === "ego" ? "#00FF88" : "#00E5FF")}
-          maskColor="rgba(5, 8, 17, 0.8)"
-          className="!bg-panel/90 !border-slate-800"
+          nodeColor={(n) => (n.id === "ego" ? "#34D399" : "#4DA3FF")}
+          maskColor="rgba(5, 7, 11, 0.85)"
+          className="!bg-[#12161E]/90 !border-white/[0.1] !rounded-xl !overflow-hidden"
         />
       </ReactFlow>
     </div>
