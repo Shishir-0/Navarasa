@@ -4,8 +4,9 @@ NAVRASA Control Barrier Function (CBF-QP) Safety Shield.
 Mathematical Foundation:
 ------------------------
 Defines safe set C = { x in X | h_i(x) >= 0 for all obstacles i }.
-Barrier Function:
-  h_i(x) = || p_ego - p_obs,i ||^2 - d_safe^2
+
+Kinetic Stopping Distance Barrier Function (Ames et al.):
+  h_i(x) = || p_ego - p_obs,i ||^2 - ( d_safe + v^2 / (2 * |a_decel_max|) )^2
 
 Control Barrier Condition (Forward Invariance of C):
   L_f h_i(x) + L_g h_i(x) * u + gamma * h_i(x) >= 0
@@ -15,9 +16,6 @@ Safety-Filter Quadratic Program (CBF-QP):
   subject to:
     A_cbf,i * u >= b_cbf,i - epsilon
     u_min <= u <= u_max
-
-If nominal MPC requests an unsafe command towards an obstacle, CBF-QP intervenes
-to minimally modify actuation and strictly guarantee safety.
 """
 
 from __future__ import annotations
@@ -45,7 +43,7 @@ class ControlBarrierFunctionShield:
         self.c_cfg = ctrl_config or ControlConfig()
         self.v_cfg = veh_config or VehicleConfig()
         self.gamma = self.c_cfg.cbf_gamma
-        self.d_safe = self.c_cfg.cbf_safety_margin_m
+        self.d_safe_base = self.c_cfg.cbf_safety_margin_m
         self.slack_weight = self.c_cfg.cbf_slack_weight
 
     def filter_control(
@@ -69,25 +67,26 @@ class ControlBarrierFunctionShield:
         if not tracks:
             return nom_accel, nom_steer, False, 0.0, 10.0
 
-        # Find critical obstacles within 20 meters
+        # Find critical obstacles within 25 meters
         relevant_tracks = []
         min_margin = float("inf")
+        max_decel = abs(self.v_cfg.max_decel)
 
         for t in tracks:
             dist = math.hypot(t.position.x - ex, t.position.y - ey)
-            # Distance margin to boundary
-            safe_radius = self.d_safe + (self.v_cfg.width + t.bbox.width) / 2.0
+            # Kinetic safety radius accounting for braking distance
+            braking_dist = (espeed ** 2) / (2.0 * max_decel)
+            safe_radius = self.d_safe_base + (self.v_cfg.width + t.bbox.width) / 2.0 + min(braking_dist, 8.0)
             margin = dist - safe_radius
             if margin < min_margin:
                 min_margin = margin
-            if dist < 25.0:
+            if dist < 30.0:
                 relevant_tracks.append((t, safe_radius))
 
         if not relevant_tracks:
             return nom_accel, nom_steer, False, 0.0, float(min_margin)
 
-        # Build CBF-QP Optimization
-        # Decision variables: [a, delta, epsilon]
+        # Build CBF-QP Optimization: [a, delta, epsilon]
         u0 = np.array([nom_accel, nom_steer, 0.0], dtype=np.float64)
 
         def objective(var: np.ndarray) -> float:
@@ -105,14 +104,10 @@ class ControlBarrierFunctionShield:
             dy = ey - oy
             h = (dx**2 + dy**2) - (safe_rad**2)
 
-            # Lie derivative L_f h
             rel_vx = evx - ovx
             rel_vy = evy - ovy
             h_dot = 2.0 * (dx * rel_vx + dy * rel_vy)
 
-            # Constraint: h_dot + a_term + steer_term + gamma * h + epsilon >= 0
-            # Under kinematic unicycle: d(evx)/da = cos(eyaw), d(evy)/da = sin(eyaw)
-            # d(evx)/dsteer = -espeed * sin(eyaw) * (espeed / L), etc.
             grad_a = 2.0 * (dx * math.cos(eyaw) + dy * math.sin(eyaw))
             grad_delta = 2.0 * (dx * (-espeed * math.sin(eyaw)) + dy * (espeed * math.cos(eyaw))) * (espeed / L)
 
@@ -122,7 +117,6 @@ class ControlBarrierFunctionShield:
 
             constraints.append({"type": "ineq", "fun": cbf_constraint})
 
-        # Bounds: a in [max_decel, max_accel], delta in [-max_steer, max_steer], eps >= 0
         bounds = [
             (self.v_cfg.max_decel, self.v_cfg.max_accel),
             (-self.v_cfg.max_steer_rad, self.v_cfg.max_steer_rad),
@@ -142,10 +136,8 @@ class ControlBarrierFunctionShield:
             safe_a = float(np.clip(res.x[0], self.v_cfg.max_decel, self.v_cfg.max_accel))
             safe_d = float(np.clip(res.x[1], -self.v_cfg.max_steer_rad, self.v_cfg.max_steer_rad))
             slack = float(res.x[2])
-            # Check if CBF modified nominal command significantly
             cbf_active = abs(safe_a - nom_accel) > 0.15 or abs(safe_d - nom_steer) > 0.05
         else:
-            # Emergency braking fallback if QP fails to find feasible point
             safe_a = self.v_cfg.max_decel
             safe_d = nom_steer
             cbf_active = True
