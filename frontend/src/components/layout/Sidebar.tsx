@@ -8,14 +8,15 @@ import {
   Flame,
   Clock,
   LineChart,
-  Sliders,
+  ShieldCheck,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { clsx } from "clsx";
 
 const NAV_ITEMS = [
-  { path: "/", label: "Mission Control", icon: LayoutDashboard },
+  { path: "/mission-control", label: "Mission Control", icon: LayoutDashboard },
   { path: "/digital-twin", label: "3D Digital Twin", icon: Boxes },
-  { path: "/intent-graph", label: "Road Intent Graph", icon: Network },
+  { path: "/road-intent-graph", label: "Road Intent Graph", icon: Network },
   { path: "/future-composer", label: "Future Composer", icon: GitFork },
   { path: "/risk-heatmap", label: "Risk Heatmap", icon: Flame },
   { path: "/decision-timeline", label: "Decision Timeline", icon: Clock },
@@ -24,10 +25,10 @@ const NAV_ITEMS = [
 
 export const Sidebar: React.FC = () => {
   return (
-    <aside className="w-16 md:w-60 border-r border-slate-800/80 bg-panel/95 backdrop-blur-md flex flex-col justify-between p-2.5 z-20 shrink-0">
-      <div className="space-y-1">
-        <div className="px-3 py-2 text-[11px] font-mono uppercase text-hud-secondary tracking-wider hidden md:block">
-          Subsystems
+    <aside className="w-16 md:w-56 m-3 mr-0 rounded-3xl vision-glass flex flex-col justify-between p-2.5 z-20 shrink-0 font-sans shadow-vision-glass">
+      <div className="space-y-1.5">
+        <div className="px-3 py-2 text-[10px] font-mono uppercase text-hud-secondary tracking-widest hidden md:block">
+          Operations
         </div>
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
@@ -37,27 +38,37 @@ export const Sidebar: React.FC = () => {
               to={item.path}
               className={({ isActive }) =>
                 clsx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-mono font-medium transition-all duration-200 group relative",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-medium transition-all duration-200 group relative",
                   isActive
-                    ? "bg-cyber-cyan/15 text-cyber-cyan border border-cyber-cyan/40 shadow-cyan-glow font-bold"
-                    : "text-hud-secondary hover:text-hud-text hover:bg-slate-900/80"
+                    ? "bg-white/10 text-white font-semibold shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)] border border-white/15"
+                    : "text-hud-secondary hover:text-white hover:bg-white/5"
                 )
               }
             >
-              <Icon className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
-              <span className="hidden md:inline truncate">{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <Icon className={clsx("w-4 h-4 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-vision-accent" : "opacity-70")} />
+                  <span className="hidden md:inline truncate">{item.label}</span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activePill"
+                      className="absolute left-0 w-1 h-5 bg-vision-accent rounded-r-full hidden md:block"
+                    />
+                  )}
+                </>
+              )}
             </NavLink>
           );
         })}
       </div>
 
-      {/* Footer system details */}
-      <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-900 text-[11px] font-mono text-hud-secondary hidden md:block">
+      {/* Footer system status */}
+      <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-[11px] font-mono text-hud-secondary hidden md:block">
         <div className="flex justify-between items-center mb-1">
-          <span>Engine Status</span>
-          <span className="w-2 h-2 rounded-full bg-cyber-emerald animate-pulse" />
+          <span className="text-[10px] uppercase tracking-wider text-slate-400">Autonomy Core</span>
+          <span className="w-2 h-2 rounded-full bg-vision-success animate-pulse" />
         </div>
-        <div className="text-[10px] text-slate-500">SIH 2026 Autonomy Framework</div>
+        <div className="text-[10px] text-white/80 font-sans">NAVRASA Engine v4.0</div>
       </div>
     </aside>
   );

@@ -1,19 +1,10 @@
 import React, { useState } from "react";
 import { useTelemetryStore } from "../../store/telemetryStore";
-import { usePlaybackStore } from "../../store/playbackStore";
 import { PerformanceHUD } from "../common/PerformanceHUD";
 import { LiveClockWidget } from "../common/LiveClockWidget";
 import { ExportSession } from "../common/ExportSession";
 import { ScenarioCardGrid, SCENARIO_BENCHMARKS } from "./ScenarioCardGrid";
-import {
-  Activity,
-  Compass,
-  Radio,
-  ShieldAlert,
-  ShieldCheck,
-  X,
-  Sparkles,
-} from "lucide-react";
+import { Activity, Compass, Radio, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 
@@ -22,26 +13,25 @@ export const Header: React.FC = () => {
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState(false);
 
   const activeScenario = SCENARIO_BENCHMARKS.find((s) => s.id === activeScenarioId) || SCENARIO_BENCHMARKS[0];
-  const cbfActive = latestFrame?.control_command?.cbf_active ?? false;
 
   return (
     <>
-      <header className="h-16 border-b border-slate-800 bg-panel/95 backdrop-blur-md px-4 flex items-center justify-between z-30 sticky top-0 font-mono">
+      <header className="h-16 px-4 flex items-center justify-between z-30 sticky top-0 font-sans border-b border-white/5 bg-[#05070B]/80 backdrop-blur-2xl">
         {/* Left: Brand Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyber-cyan via-blue-600 to-indigo-700 flex items-center justify-center shadow-cyan-glow">
-            <Activity className="w-5 h-5 text-slate-950 font-bold" />
+          <div className="w-8 h-8 rounded-2xl bg-gradient-to-tr from-vision-accent via-blue-500 to-indigo-600 flex items-center justify-center shadow-vision-glass">
+            <Activity className="w-4 h-4 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-extrabold tracking-wider text-white">
+              <h1 className="text-sm font-bold tracking-tight text-white font-sans">
                 NAVRASA
               </h1>
-              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-cyber-cyan/15 border border-cyber-cyan/40 text-cyber-cyan shadow-[0_0_10px_rgba(0,240,255,0.2)]">
-                v3.0 OPS CONSOLE
+              <span className="text-[10px] uppercase font-mono font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-vision-accent">
+                VisionOS v4
               </span>
             </div>
-            <p className="text-[10px] text-hud-secondary tracking-tight hidden lg:block">
+            <p className="text-[10px] text-hud-secondary tracking-normal hidden lg:block font-sans">
               Neural Adaptive Vehicular Reasoning with Anticipatory Scene Awareness
             </p>
           </div>
@@ -49,44 +39,35 @@ export const Header: React.FC = () => {
 
         {/* Center: Scenario Selector Trigger & Clock */}
         <div className="flex items-center gap-3">
-          {/* Interactive Scenario Trigger Button */}
           <button
             onClick={() => setIsScenarioModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-cyber-cyan text-xs text-white hover:bg-slate-800 transition-all shadow-sm group cursor-pointer"
+            className="vision-capsule flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white cursor-pointer group"
           >
-            <Compass className="w-4 h-4 text-cyber-cyan group-hover:rotate-45 transition-transform" />
+            <Compass className="w-3.5 h-3.5 text-vision-accent group-hover:rotate-45 transition-transform" />
             <div className="text-left">
-              <div className="text-[9px] text-slate-400 uppercase font-sans">Scenario Benchmark</div>
-              <div className="text-xs font-bold text-white truncate max-w-[170px]">
+              <span className="text-[11px] font-medium text-white truncate max-w-[160px] inline-block">
                 {activeScenario?.name}
-              </div>
+              </span>
             </div>
           </button>
 
-          {/* Live Simulation Clock Widget */}
-          <LiveClockWidget className="hidden md:flex" />
+          <LiveClockWidget className="hidden md:flex vision-capsule border-white/10 rounded-full" />
         </div>
 
         {/* Right: Performance HUD, Session Export & Connection Badge */}
         <div className="flex items-center gap-3">
-          {/* Live Performance HUD */}
           <PerformanceHUD />
-
-          {/* Export Session */}
           <ExportSession className="hidden xl:flex" />
 
-          {/* Connection Status */}
           <div
             className={clsx(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold",
-              isConnected
-                ? "bg-cyber-emerald/15 text-cyber-emerald border-cyber-emerald/40"
-                : "bg-cyber-cyan/10 text-cyber-cyan border-cyber-cyan/30"
+              "vision-capsule flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium",
+              isConnected ? "text-vision-success" : "text-vision-accent"
             )}
             title={isConnected ? "Connected to FastAPI WebSocket" : "Running Standalone Client Simulation"}
           >
-            <Radio className="w-3.5 h-3.5 animate-pulse" />
-            <span className="hidden sm:inline">{isConnected ? "ONLINE" : "SIM"}</span>
+            <span className={clsx("w-1.5 h-1.5 rounded-full animate-pulse", isConnected ? "bg-vision-success" : "bg-vision-accent")} />
+            <span className="hidden sm:inline">{isConnected ? "LIVE" : "SIM"}</span>
           </div>
         </div>
       </header>
@@ -94,24 +75,25 @@ export const Header: React.FC = () => {
       {/* Scenario Benchmark Selection Modal */}
       <AnimatePresence>
         {isScenarioModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-2xl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-5xl bg-panel-bg border border-slate-700 rounded-2xl p-6 shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col"
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="w-full max-w-5xl vision-elevated border border-white/10 rounded-3xl p-6 shadow-vision-elevated overflow-hidden relative max-h-[90vh] flex flex-col"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-cyber-cyan/10 border border-cyber-cyan/30 text-cyber-cyan">
-                    <Compass className="w-6 h-6" />
+                  <div className="p-2.5 rounded-2xl bg-vision-accent/10 border border-vision-accent/20 text-vision-accent">
+                    <Compass className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                    <h2 className="text-base font-bold text-white font-sans flex items-center gap-2">
                       Indian Road Benchmark Scenarios
-                      <span className="text-xs px-2 py-0.5 rounded bg-cyber-cyan/20 text-cyber-cyan font-normal">
-                        8 Scenarios Available
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-hud-secondary font-mono">
+                        8 Scenarios
                       </span>
                     </h2>
                     <p className="text-xs text-hud-secondary font-sans mt-0.5">
@@ -122,9 +104,9 @@ export const Header: React.FC = () => {
 
                 <button
                   onClick={() => setIsScenarioModalOpen(false)}
-                  className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                  className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
