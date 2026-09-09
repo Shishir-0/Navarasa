@@ -1,0 +1,101 @@
+scenarios:
+  - id: "autorickshaw_cutin_blindspot"
+    name: "Auto-Rickshaw Sudden Cut-in with Blindspot Pedestrian"
+    description: "An autorickshaw abruptly overtakes and cuts across the ego vehicle's path while an occluded pedestrian crosses from behind a parked truck."
+    duration_s: 10.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 8.0
+    target_goal:
+      x: 60.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "rickshaw_01"
+        type: "AUTORICKSHAW"
+        start_x: 5.0
+        start_y: 3.2
+        heading: 0.0
+        speed: 9.5
+        behavior: "CUT_IN"
+        trigger_time_s: 1.5
+      - id: "pedestrian_01"
+        type: "PEDESTRIAN"
+        start_x: 25.0
+        start_y: 5.0
+        heading: -1.5708
+        speed: 1.4
+        behavior: "CROSSING"
+        trigger_time_s: 3.0
+      - id: "parked_truck_01"
+        type: "TRUCK"
+        start_x: 20.0
+        start_y: 4.5
+        heading: 0.0
+        speed: 0.0
+        behavior: "STATIC"
+        trigger_time_s: 0.0
+
+  - id: "unmarked_intersection_chaos"
+    name: "Unmarked 4-Way Intersection with Wrong-Way Two-Wheeler"
+    description: "Challenging unsignalized intersection where a two-wheeler enters against traffic flow and a car negotiates right-of-way."
+    duration_s: 12.0
+    ego_start:
+      x: -30.0
+      y: 0.0
+      heading: 0.0
+      speed: 6.0
+    target_goal:
+      x: 30.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "bike_wrong_way"
+        type: "TWO_WHEELER"
+        start_x: 15.0
+        start_y: 1.0
+        heading: 3.1415
+        speed: 7.0
+        behavior: "WRONG_WAY"
+        trigger_time_s: 1.0
+      - id: "crossing_car"
+        type: "CAR"
+        start_x: 0.0
+        start_y: -20.0
+        heading: 1.5708
+        speed: 5.5
+        behavior: "CROSSING"
+        trigger_time_s: 2.0
+
+  - id: "cow_blockage_lateral_nudge"
+    name: "Stationary Cattle Lane Blockage with Oncoming Traffic"
+    description: "A stationary cow blocks the ego travel lane, requiring kinodynamic Hybrid A* nudging around the animal without violating CBF safety barriers against oncoming bus."
+    duration_s: 15.0
+    ego_start:
+      x: 0.0
+      y: -1.75
+      heading: 0.0
+      speed: 7.0
+    target_goal:
+      x: 70.0
+      y: -1.75
+      heading: 0.0
+    actors:
+      - id: "cattle_01"
+        type: "CATTLE"
+        start_x: 30.0
+        start_y: -1.75
+        heading: 0.5
+        speed: 0.0
+        behavior: "STATIC"
+        trigger_time_s: 0.0
+      - id: "oncoming_bus"
+        type: "BUS"
+        start_x: 65.0
+        start_y: 1.75
+        heading: 3.1415
+        speed: 6.0
+        behavior: "ONCOMING"
+        trigger_time_s: 0.0

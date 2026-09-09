@@ -1,0 +1,76 @@
+vehicle:
+  wheelbase: 2.8
+  length: 4.8
+  width: 2.0
+  height: 1.5
+  max_steer_rad: 0.65
+  max_accel: 3.0
+  max_decel: -6.0
+  max_steer_rate: 0.8
+  max_speed: 15.0
+
+tracking:
+  filter_type: "UKF"
+  max_age_misses: 5
+  min_hits_confirm: 3
+  gating_threshold_chi2: 9.21
+  process_noise_pos: 0.5
+  process_noise_vel: 1.0
+  process_noise_yaw: 0.1
+  measurement_noise_lidar: 0.15
+  measurement_noise_radar: 0.40
+
+graph:
+  spatial_proximity_radius: 25.0
+  critical_ttc_threshold: 4.0
+  lateral_encroachment_dist: 2.5
+  gnn_hidden_dim: 64
+  gnn_num_heads: 4
+
+prediction:
+  horizon_seconds: 3.0
+  dt: 0.1
+  top_k_hypotheses: 3
+  uncertainty_growth_rate: 0.15
+
+risk_field:
+  grid_resolution: 0.5
+  map_width_m: 60.0
+  map_height_m: 60.0
+  w_ttc: 0.35
+  w_kinetic: 0.25
+  w_uncertainty: 0.20
+  w_occlusion: 0.20
+  risk_decay_rate: 0.4
+
+planning:
+  primary_planner: "HYBRID_A_STAR"
+  xy_resolution: 0.5
+  yaw_resolution_rad: 0.2618
+  step_size: 1.0
+  reeds_shepp_step: 0.25
+  max_curvature: 0.25
+  cost_reverse: 2.5
+  cost_steer_change: 1.5
+  cost_risk_multiplier: 5.0
+  time_limit_ms: 150.0
+
+control:
+  mpc_horizon: 15
+  mpc_dt: 0.1
+  weight_pos_x: 10.0
+  weight_pos_y: 10.0
+  weight_yaw: 5.0
+  weight_v: 2.0
+  weight_steer: 1.0
+  weight_accel: 0.5
+  weight_steer_rate: 10.0
+  weight_jerk: 5.0
+  cbf_gamma: 0.8
+  cbf_safety_margin_m: 1.2
+  cbf_slack_weight: 1000.0
+
+target_fps: 20.0
+enable_ws_stream: true
+server_host: "0.0.0.0"
+server_port: 8000
