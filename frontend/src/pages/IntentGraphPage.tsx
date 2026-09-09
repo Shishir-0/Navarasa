@@ -2,7 +2,7 @@ import React from "react";
 import { IntentGraphFlow } from "../components/graph/IntentGraphFlow";
 import { ActorInspector } from "../components/graph/ActorInspector";
 import { Card } from "../components/common/Card";
-import { EdgeBadge } from "../components/common/Badge";
+import { EdgeBadge, Badge } from "../components/common/Badge";
 import { useTelemetryStore } from "../store/telemetryStore";
 import { EDGE_COLOR_MAP } from "../utils/colors";
 import { Network, Cpu, Zap, Activity } from "lucide-react";
@@ -17,26 +17,31 @@ export const IntentGraphPage: React.FC = () => {
   const conflictCount = graphState ? graphState.edges.filter((e) => e.edge_type === "CONFLICT").length : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-5 min-h-full font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-white/[0.08]">
         <div>
-          <h2 className="text-lg font-bold font-mono text-hud-text uppercase tracking-wider">
-            Road Intent Graph & Relational GNN Reasoner
-          </h2>
-          <p className="text-xs font-mono text-hud-secondary">
-            Dynamic spatial-temporal interaction graph computing implicit right-of-way negotiation and conflict attention
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-[#F5F7FA] flex items-center gap-2">
+              <Network className="w-6 h-6 text-[#4DA3FF]" />
+              Road Intent Graph & Relational GNN
+            </h1>
+            <Badge variant="cyan">ATTENTION V4</Badge>
+          </div>
+          <p className="text-[13px] text-[#9BA6B2] mt-1">
+            Dynamic spatio-temporal interaction graph computing implicit right-of-way negotiation and conflict attention weights.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-hud-secondary">
-            Nodes: <strong className="text-cyber-cyan">{nodeCount}</strong>
+
+        <div className="flex items-center gap-2.5 text-xs font-mono">
+          <span className="px-3 py-1.5 rounded-xl bg-[#12161E]/80 backdrop-blur-md border border-white/[0.08] text-[#9BA6B2]">
+            Nodes: <strong className="text-[#4DA3FF] font-semibold">{nodeCount}</strong>
           </span>
-          <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-hud-secondary">
-            Edges: <strong className="text-cyber-emerald">{edgeCount}</strong>
+          <span className="px-3 py-1.5 rounded-xl bg-[#12161E]/80 backdrop-blur-md border border-white/[0.08] text-[#9BA6B2]">
+            Edges: <strong className="text-[#34D399] font-semibold">{edgeCount}</strong>
           </span>
-          <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-hud-secondary">
-            Conflicts: <strong className="text-cyber-crimson">{conflictCount}</strong>
+          <span className="px-3 py-1.5 rounded-xl bg-[#12161E]/80 backdrop-blur-md border border-white/[0.08] text-[#9BA6B2]">
+            Conflicts: <strong className="text-[#FF5C7A] font-semibold">{conflictCount}</strong>
           </span>
         </div>
       </div>
@@ -50,10 +55,10 @@ export const IntentGraphPage: React.FC = () => {
       </div>
 
       {/* Relational Edge Semantics & GNN Reasoning Bar */}
-      <Card title="Relational Interaction Taxonomy" subtitle="Spatial-temporal edge classifications">
-        <div className="flex flex-wrap gap-2 pt-1">
+      <Card title="Relational Interaction Taxonomy" subtitle="Spatial-temporal edge classifications & attention weights">
+        <div className="flex flex-wrap gap-2.5 pt-1">
           {(Object.keys(EDGE_COLOR_MAP) as IntentEdgeType[]).map((etype) => (
-            <EdgeBadge key={etype} type={etype} className="px-3 py-1" />
+            <EdgeBadge key={etype} type={etype} className="px-3 py-1.5" />
           ))}
         </div>
       </Card>

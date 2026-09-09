@@ -16,14 +16,16 @@ import {
   Search, 
   Clock, 
   ShieldCheck,
-  Play
+  Play,
+  ChevronDown,
+  Layers
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const DecisionTimelinePage: React.FC = () => {
   const latestFrame = useTelemetryStore((state) => state.latestFrame);
   const frameBuffer = useTelemetryStore((state) => state.frameBuffer);
-  const { seek, setPlaying } = usePlaybackStore();
+  const { seek, setPlaying, scrubberIndex } = usePlaybackStore();
 
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'critical' | 'cbf' | 'planning' | 'intent'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,8 +33,8 @@ export const DecisionTimelinePage: React.FC = () => {
 
   if (!latestFrame) {
     return (
-      <div className="flex h-full items-center justify-center text-slate-500 font-mono">
-        <Clock className="w-8 h-8 animate-spin mr-3 text-cyan" />
+      <div className="flex h-full items-center justify-center text-[#9BA6B2] font-mono">
+        <Clock className="w-8 h-8 animate-spin mr-3 text-[#4DA3FF]" />
         Syncing decision timeline stream...
       </div>
     );
@@ -120,20 +122,20 @@ export const DecisionTimelinePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-5 p-6 min-h-full overflow-y-auto">
+    <div className="flex flex-col gap-5 p-6 min-h-full overflow-y-auto font-sans">
       {/* Top Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-panel-border/50">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-white/[0.08]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-              <History className="w-6 h-6 text-cyan animate-pulse" />
-              Autonomous Decision Timeline
+            <h1 className="text-2xl font-bold tracking-tight text-[#F5F7FA] flex items-center gap-2">
+              <History className="w-6 h-6 text-[#4DA3FF]" />
+              Decision Timeline & Causality
             </h1>
-            <Badge variant="cyan">REAL-TIME LOG</Badge>
+            <Badge variant="cyan">CAUSAL ENGINE</Badge>
             <Badge variant="outline">{frameBuffer.length} BUFFERED FRAMES</Badge>
           </div>
-          <p className="text-xs text-text-secondary mt-1">
-            Chronological causality pipeline explaining perception triggers, GNN reasoning, Hybrid A* optimization, and CBF safety overrides.
+          <p className="text-[13px] text-[#9BA6B2] mt-1">
+            Apple Wallet-style chronological decision trace explaining perception triggers, GNN reasoning, Hybrid A* optimization, and CBF safety overrides.
           </p>
         </div>
 
@@ -161,24 +163,24 @@ export const DecisionTimelinePage: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-panel-bg/60 p-3 rounded-xl border border-panel-border">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-[#12161E]/75 backdrop-blur-2xl p-3 rounded-2xl border border-white/[0.08]">
         {/* Category Filters */}
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400 mr-1" />
+          <Filter className="w-4 h-4 text-[#9BA6B2] mr-1" />
           {[
             { key: 'all', label: 'All Decisions' },
             { key: 'critical', label: 'Safety Critical' },
             { key: 'cbf', label: 'CBF Overrides' },
-            { key: 'intent', label: 'GNN Intent Triggers' },
+            { key: 'intent', label: 'GNN Intents' },
             { key: 'planning', label: 'Planner Replans' },
           ].map((tab) => (
             <button
               key={tab.key}
               onClick={() => setSelectedFilter(tab.key as any)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 selectedFilter === tab.key
-                  ? 'bg-cyan text-brand-black shadow-glow-cyan'
-                  : 'bg-panel-bg text-slate-400 hover:text-white border border-panel-border/50'
+                  ? 'bg-[#4DA3FF] text-[#05070B] font-semibold shadow-[0_2px_12px_rgba(77,163,255,0.3)]'
+                  : 'bg-[#1C222E]/60 text-[#9BA6B2] hover:text-white border border-white/[0.06]'
               }`}
             >
               {tab.label}
@@ -188,13 +190,13 @@ export const DecisionTimelinePage: React.FC = () => {
 
         {/* Search Box */}
         <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#9BA6B2]" />
           <input
             type="text"
-            placeholder="Search by actor or action..."
+            placeholder="Search by actor or trigger..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 pr-3 py-1.5 bg-brand-black/80 border border-panel-border rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan w-64"
+            className="pl-8 pr-3 py-1.5 bg-[#05070B]/80 border border-white/[0.08] rounded-xl text-xs text-white placeholder-[#9BA6B2]/60 focus:outline-none focus:border-[#4DA3FF] w-64 font-sans"
           />
         </div>
       </div>
@@ -203,9 +205,9 @@ export const DecisionTimelinePage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
         {/* Left 7 Cols: Chronological Event Stream */}
         <div className="lg:col-span-7 flex flex-col gap-3">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
+          <div className="text-xs font-medium text-[#9BA6B2] uppercase tracking-wider px-1 flex items-center justify-between">
             <span>Causality Stream ({filteredEvents.length} items)</span>
-            <span>Click card to inspect & jump</span>
+            <span>Click card to inspect & jump replay</span>
           </div>
 
           <div className="space-y-3 overflow-y-auto max-h-[620px] pr-2">
@@ -215,31 +217,31 @@ export const DecisionTimelinePage: React.FC = () => {
                 <motion.div
                   key={evt.id}
                   layout
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={() => {
                     setSelectedEventId(evt.id);
                     handleReplaySeek(evt.frameId);
                   }}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer relative overflow-hidden group ${
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
                     isSelected
-                      ? 'bg-panel-bg border-cyan shadow-glow-cyan/20'
+                      ? 'bg-[#1C222E]/90 border-[#4DA3FF]/60 shadow-[0_8px_32px_rgba(77,163,255,0.2)]'
                       : evt.isCritical
-                      ? 'bg-panel-bg/60 border-crimson/40 hover:border-crimson'
-                      : 'bg-panel-bg/40 border-panel-border/60 hover:bg-panel-bg hover:border-slate-500'
+                      ? 'bg-[#12161E]/75 border-[#FF5C7A]/40 hover:border-[#FF5C7A]'
+                      : 'bg-[#12161E]/70 border-white/[0.08] hover:bg-[#1C222E]/80 hover:border-white/20'
                   }`}
                 >
                   {/* Left Accent Glow Stripe */}
                   <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${
-                    evt.category === 'cbf' ? 'bg-crimson' : evt.isCritical ? 'bg-amber' : 'bg-cyan'
+                    evt.category === 'cbf' ? 'bg-[#FF5C7A]' : evt.isCritical ? 'bg-[#FBBF24]' : 'bg-[#4DA3FF]'
                   }`} />
 
                   {/* Header Row */}
                   <div className="flex items-center justify-between gap-2 mb-2 pl-2">
                     <div className="flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 text-cyan" />
-                      <span className="font-mono text-xs font-bold text-cyan-300">{evt.timeStr}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">Frame #{evt.frameId}</span>
+                      <Clock className="w-3.5 h-3.5 text-[#4DA3FF]" />
+                      <span className="font-mono text-xs font-semibold text-[#4DA3FF]">{evt.timeStr}</span>
+                      <span className="text-[11px] text-[#9BA6B2] font-mono">Frame #{evt.frameId}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -250,7 +252,7 @@ export const DecisionTimelinePage: React.FC = () => {
                           e.stopPropagation();
                           handleReplaySeek(evt.frameId);
                         }}
-                        className="p-1 rounded bg-panel-border/40 hover:bg-cyan/20 text-slate-400 hover:text-cyan transition-colors"
+                        className="p-1 rounded-lg bg-white/[0.06] hover:bg-[#4DA3FF]/20 text-[#9BA6B2] hover:text-[#4DA3FF] transition-colors"
                         title="Seek replay to this frame"
                       >
                         <Play className="w-3 h-3" />
@@ -259,30 +261,30 @@ export const DecisionTimelinePage: React.FC = () => {
                   </div>
 
                   {/* Event Title */}
-                  <div className="text-sm font-semibold text-white pl-2 mb-3">
+                  <div className="text-sm font-semibold text-[#F5F7FA] pl-2 mb-3">
                     {evt.title}
                   </div>
 
                   {/* Causal Step Micro-Pills */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pl-2 text-[11px] font-mono">
-                    <div className="bg-brand-black/60 p-2 rounded border border-panel-border/50">
-                      <div className="text-[10px] text-slate-400 uppercase font-sans">Perception</div>
-                      <div className="text-white truncate">{evt.perception.actorId} ({evt.perception.distance})</div>
+                    <div className="bg-[#05070B]/70 p-2 rounded-xl border border-white/[0.05]">
+                      <div className="text-[10px] text-[#9BA6B2] uppercase font-sans">Perception</div>
+                      <div className="text-[#F5F7FA] truncate mt-0.5">{evt.perception.actorId} ({evt.perception.distance})</div>
                     </div>
 
-                    <div className="bg-brand-black/60 p-2 rounded border border-panel-border/50">
-                      <div className="text-[10px] text-slate-400 uppercase font-sans">RIG / GNN</div>
-                      <div className="text-cyan truncate">{evt.reasoning.relation} ({evt.reasoning.confidence})</div>
+                    <div className="bg-[#05070B]/70 p-2 rounded-xl border border-white/[0.05]">
+                      <div className="text-[10px] text-[#9BA6B2] uppercase font-sans">RIG / GNN</div>
+                      <div className="text-[#4DA3FF] truncate mt-0.5">{evt.reasoning.relation} ({evt.reasoning.confidence})</div>
                     </div>
 
-                    <div className="bg-brand-black/60 p-2 rounded border border-panel-border/50">
-                      <div className="text-[10px] text-slate-400 uppercase font-sans">Planner</div>
-                      <div className="text-emerald truncate">{evt.planning.replanMs}</div>
+                    <div className="bg-[#05070B]/70 p-2 rounded-xl border border-white/[0.05]">
+                      <div className="text-[10px] text-[#9BA6B2] uppercase font-sans">Planner</div>
+                      <div className="text-[#34D399] truncate mt-0.5">{evt.planning.replanMs}</div>
                     </div>
 
-                    <div className="bg-brand-black/60 p-2 rounded border border-panel-border/50">
-                      <div className="text-[10px] text-slate-400 uppercase font-sans">Actuation</div>
-                      <div className={evt.control.cbfOverride ? 'text-crimson font-bold' : 'text-slate-300'}>
+                    <div className="bg-[#05070B]/70 p-2 rounded-xl border border-white/[0.05]">
+                      <div className="text-[10px] text-[#9BA6B2] uppercase font-sans">Actuation</div>
+                      <div className={`truncate mt-0.5 ${evt.control.cbfOverride ? 'text-[#FF5C7A] font-bold' : 'text-[#F5F7FA]'}`}>
                         {parseFloat(evt.control.brake) > 0 ? `Brake: ${evt.control.brake}` : `Thr: ${evt.control.throttle}`}
                       </div>
                     </div>
@@ -297,96 +299,96 @@ export const DecisionTimelinePage: React.FC = () => {
         <div className="lg:col-span-5 flex flex-col gap-4">
           <Card
             title="Decision Causality Graph"
-            subtitle="Full end-to-end reasoning sequence for selected timestamp"
+            subtitle="End-to-end reasoning sequence for selected timestamp"
             badge={<Badge variant="cyan">{activeEvent?.timeStr || 'LIVE'}</Badge>}
             className="flex-1 flex flex-col"
           >
             {activeEvent && (
-              <div className="space-y-4 text-xs flex-1">
+              <div className="space-y-3.5 text-xs flex-1">
                 {/* Step 1: Perception */}
-                <div className="p-3 bg-brand-black/70 rounded-xl border border-panel-border relative">
+                <div className="p-3 bg-[#05070B]/80 rounded-2xl border border-white/[0.06] relative">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-cyan flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-cyan" />
+                    <span className="font-semibold text-[#4DA3FF] flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-[#4DA3FF]" />
                       1. Sensory Detection & Tracking
                     </span>
                     <Badge variant="outline">UKF Filtered</Badge>
                   </div>
-                  <div className="text-slate-300 space-y-1">
-                    <div>Observed Entity: <span className="font-mono text-white font-semibold">{activeEvent.perception.actorId}</span> ({activeEvent.perception.type})</div>
+                  <div className="text-[#9BA6B2] space-y-1">
+                    <div>Observed Entity: <span className="font-mono text-white font-medium">{activeEvent.perception.actorId}</span> ({activeEvent.perception.type})</div>
                     <div>Corridor Distance: <span className="font-mono text-white">{activeEvent.perception.distance}</span></div>
                   </div>
                 </div>
 
                 {/* Arrow Connector */}
-                <div className="flex justify-center -my-2 text-cyan">
-                  <ArrowRight className="w-4 h-4 rotate-90" />
+                <div className="flex justify-center -my-1 text-[#4DA3FF]">
+                  <ArrowRight className="w-3.5 h-3.5 rotate-90" />
                 </div>
 
                 {/* Step 2: Intent & GNN */}
-                <div className="p-3 bg-brand-black/70 rounded-xl border border-panel-border relative">
+                <div className="p-3 bg-[#05070B]/80 rounded-2xl border border-white/[0.06] relative">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-amber flex items-center gap-1.5">
-                      <GitCommit className="w-3.5 h-3.5 text-amber" />
+                    <span className="font-semibold text-[#FBBF24] flex items-center gap-1.5">
+                      <GitCommit className="w-3.5 h-3.5 text-[#FBBF24]" />
                       2. Road Intent Graph & Risk Field
                     </span>
                     <Badge variant="warning">{activeEvent.reasoning.riskLevel}</Badge>
                   </div>
-                  <div className="text-slate-300 space-y-1">
-                    <div>Predicted Intent Mode: <span className="font-mono text-amber font-semibold">{activeEvent.reasoning.relation}</span></div>
+                  <div className="text-[#9BA6B2] space-y-1">
+                    <div>Predicted Intent Mode: <span className="font-mono text-[#FBBF24] font-medium">{activeEvent.reasoning.relation}</span></div>
                     <div>GNN Classification Confidence: <span className="font-mono text-white">{activeEvent.reasoning.confidence}</span></div>
-                    <div>Potential Field Peak Risk: <span className="font-mono text-crimson font-bold">{activeEvent.reasoning.riskValue}</span></div>
+                    <div>Potential Field Peak Risk: <span className="font-mono text-[#FF5C7A] font-semibold">{activeEvent.reasoning.riskValue}</span></div>
                   </div>
                 </div>
 
                 {/* Arrow Connector */}
-                <div className="flex justify-center -my-2 text-amber">
-                  <ArrowRight className="w-4 h-4 rotate-90" />
+                <div className="flex justify-center -my-1 text-[#FBBF24]">
+                  <ArrowRight className="w-3.5 h-3.5 rotate-90" />
                 </div>
 
                 {/* Step 3: Hybrid A* Planning */}
-                <div className="p-3 bg-brand-black/70 rounded-xl border border-panel-border relative">
+                <div className="p-3 bg-[#05070B]/80 rounded-2xl border border-white/[0.06] relative">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-emerald flex items-center gap-1.5">
-                      <Cpu className="w-3.5 h-3.5 text-emerald" />
+                    <span className="font-semibold text-[#34D399] flex items-center gap-1.5">
+                      <Cpu className="w-3.5 h-3.5 text-[#34D399]" />
                       3. Kinodynamic Trajectory Optimization
                     </span>
                     <Badge variant="success">OPTIMAL</Badge>
                   </div>
-                  <div className="text-slate-300 space-y-1">
+                  <div className="text-[#9BA6B2] space-y-1">
                     <div>Planner Algorithm: <span className="font-mono text-white">{activeEvent.planning.algorithm}</span></div>
                     <div>Lookahead Horizon: <span className="font-mono text-white">{activeEvent.planning.horizon}</span></div>
-                    <div>Search & Optimization Runtime: <span className="font-mono text-emerald font-bold">{activeEvent.planning.replanMs}</span></div>
+                    <div>Search Runtime: <span className="font-mono text-[#34D399] font-medium">{activeEvent.planning.replanMs}</span></div>
                   </div>
                 </div>
 
                 {/* Arrow Connector */}
-                <div className="flex justify-center -my-2 text-emerald">
-                  <ArrowRight className="w-4 h-4 rotate-90" />
+                <div className="flex justify-center -my-1 text-[#34D399]">
+                  <ArrowRight className="w-3.5 h-3.5 rotate-90" />
                 </div>
 
                 {/* Step 4: Control Barrier Function (CBF) & Actuation */}
-                <div className={`p-3 rounded-xl border relative ${
+                <div className={`p-3 rounded-2xl border relative ${
                   activeEvent.control.cbfOverride 
-                    ? 'bg-crimson/10 border-crimson/60 text-crimson-100' 
-                    : 'bg-brand-black/70 border-panel-border'
+                    ? 'bg-[#FF5C7A]/10 border-[#FF5C7A]/40 text-[#FF5C7A]' 
+                    : 'bg-[#05070B]/80 border-white/[0.06]'
                 }`}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className={`font-bold flex items-center gap-1.5 ${
-                      activeEvent.control.cbfOverride ? 'text-crimson' : 'text-white'
+                    <span className={`font-semibold flex items-center gap-1.5 ${
+                      activeEvent.control.cbfOverride ? 'text-[#FF5C7A]' : 'text-white'
                     }`}>
-                      {activeEvent.control.cbfOverride ? <ShieldAlert className="w-3.5 h-3.5 text-crimson" /> : <ShieldCheck className="w-3.5 h-3.5 text-emerald" />}
+                      {activeEvent.control.cbfOverride ? <ShieldAlert className="w-3.5 h-3.5 text-[#FF5C7A]" /> : <ShieldCheck className="w-3.5 h-3.5 text-[#34D399]" />}
                       4. Safety Barrier Guarantee & Actuation
                     </span>
                     {activeEvent.control.cbfOverride ? <Badge variant="danger">OVERRIDE</Badge> : <Badge variant="success">SAFE</Badge>}
                   </div>
-                  <div className="space-y-1 text-slate-300">
+                  <div className="space-y-1 text-[#9BA6B2]">
                     <div className="flex justify-between font-mono">
                       <span>Throttle: <span className="text-white">{activeEvent.control.throttle}</span></span>
-                      <span>Brake: <span className={activeEvent.control.cbfOverride ? 'text-crimson font-bold' : 'text-white'}>{activeEvent.control.brake}</span></span>
+                      <span>Brake: <span className={activeEvent.control.cbfOverride ? 'text-[#FF5C7A] font-bold' : 'text-white'}>{activeEvent.control.brake}</span></span>
                       <span>Steer: <span className="text-white">{activeEvent.control.steering}</span></span>
                     </div>
-                    <div className="text-[11px] text-slate-400 pt-1 border-t border-panel-border/40">
+                    <div className="text-[11px] text-[#9BA6B2]/80 pt-1 border-t border-white/[0.06]">
                       Safety Margin: TTC = {activeEvent.safety.ttc} | Margin = {activeEvent.safety.margin}
                     </div>
                   </div>
