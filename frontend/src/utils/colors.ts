@@ -1,27 +1,44 @@
 import { ActorType, IntentEdgeType } from "../types/navrasa";
 
+/**
+ * NAVRASA Apple Vision Pro Edition Design System Tokens
+ */
+export const VISION_TOKENS = {
+  background: "#05070B",
+  surface: "rgba(18, 22, 30, 0.72)",
+  elevated: "rgba(28, 34, 46, 0.82)",
+  primaryText: "#F5F7FA",
+  secondaryText: "#9BA6B2",
+  divider: "rgba(255, 255, 255, 0.08)",
+  accent: "#4DA3FF",
+  success: "#34D399",
+  warning: "#FBBF24",
+  danger: "#FF5C7A",
+  purple: "#C084FC",
+};
+
 export const ACTOR_COLOR_MAP: Record<ActorType, { hex: string; bg: string; border: string; label: string }> = {
-  EGO: { hex: "#00FF88", bg: "rgba(0, 255, 136, 0.15)", border: "#00FF88", label: "Ego Vehicle" },
-  AUTORICKSHAW: { hex: "#FFB700", bg: "rgba(255, 183, 0, 0.15)", border: "#FFB700", label: "Autorickshaw" },
-  TWO_WHEELER: { hex: "#FF7700", bg: "rgba(255, 119, 0, 0.15)", border: "#FF7700", label: "Two-Wheeler" },
-  PEDESTRIAN: { hex: "#FF00FF", bg: "rgba(255, 0, 255, 0.15)", border: "#FF00FF", label: "Pedestrian" },
-  CATTLE: { hex: "#A855F7", bg: "rgba(168, 85, 247, 0.15)", border: "#A855F7", label: "Cattle" },
-  BUS: { hex: "#0088FF", bg: "rgba(0, 136, 255, 0.15)", border: "#0088FF", label: "Bus" },
+  EGO: { hex: "#34D399", bg: "rgba(52, 211, 153, 0.15)", border: "#34D399", label: "Ego Vehicle" },
+  AUTORICKSHAW: { hex: "#FBBF24", bg: "rgba(251, 191, 36, 0.15)", border: "#FBBF24", label: "Autorickshaw" },
+  TWO_WHEELER: { hex: "#FB923C", bg: "rgba(251, 146, 60, 0.15)", border: "#FB923C", label: "Two-Wheeler" },
+  PEDESTRIAN: { hex: "#F472B6", bg: "rgba(244, 114, 182, 0.15)", border: "#F472B6", label: "Pedestrian" },
+  CATTLE: { hex: "#C084FC", bg: "rgba(192, 132, 252, 0.15)", border: "#C084FC", label: "Cattle" },
+  BUS: { hex: "#60A5FA", bg: "rgba(96, 165, 250, 0.15)", border: "#60A5FA", label: "Bus" },
   TRUCK: { hex: "#38BDF8", bg: "rgba(56, 189, 248, 0.15)", border: "#38BDF8", label: "Truck" },
   CAR: { hex: "#FACC15", bg: "rgba(250, 204, 21, 0.15)", border: "#FACC15", label: "Car" },
   STATIC_OBSTACLE: { hex: "#94A3B8", bg: "rgba(148, 163, 184, 0.15)", border: "#94A3B8", label: "Obstacle" },
-  POTHOLE: { hex: "#E11D48", bg: "rgba(225, 29, 72, 0.15)", border: "#E11D48", label: "Pothole" },
-  BLIND_SPOT: { hex: "#6366F1", bg: "rgba(99, 102, 241, 0.15)", border: "#6366F1", label: "Blind Spot" },
+  POTHOLE: { hex: "#FB7185", bg: "rgba(251, 113, 133, 0.15)", border: "#FB7185", label: "Pothole" },
+  BLIND_SPOT: { hex: "#818CF8", bg: "rgba(129, 140, 248, 0.15)", border: "#818CF8", label: "Blind Spot" },
 };
 
 export const EDGE_COLOR_MAP: Record<IntentEdgeType, { hex: string; label: string }> = {
-  CONFLICT: { hex: "#FF0055", label: "Conflict" },
-  LATERAL_ENCROACHMENT: { hex: "#FFB700", label: "Lateral Squeeze" },
-  FOLLOWING: { hex: "#3B82F6", label: "Following" },
-  CROSSING: { hex: "#00E5FF", label: "Crossing" },
-  MERGING: { hex: "#F59E0B", label: "Merging" },
-  OVERTAKING: { hex: "#A855F7", label: "Overtaking" },
-  YIELD_NEGOTIATION: { hex: "#00FF88", label: "Yield Negotiation" },
+  CONFLICT: { hex: "#FF5C7A", label: "Conflict" },
+  LATERAL_ENCROACHMENT: { hex: "#FBBF24", label: "Lateral Squeeze" },
+  FOLLOWING: { hex: "#4DA3FF", label: "Following" },
+  CROSSING: { hex: "#38BDF8", label: "Crossing" },
+  MERGING: { hex: "#FB923C", label: "Merging" },
+  OVERTAKING: { hex: "#C084FC", label: "Overtaking" },
+  YIELD_NEGOTIATION: { hex: "#34D399", label: "Yield Negotiation" },
   OCCLUDING: { hex: "#818CF8", label: "Occluding" },
-  PROXIMITY: { hex: "#475569", label: "Proximity" },
+  PROXIMITY: { hex: "#64748B", label: "Proximity" },
 };
