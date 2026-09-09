@@ -171,4 +171,4 @@ For complete equations, continuous time derivations, algorithmic complexity tabl
 ---
 
 ## 👥 Authors
-Built for **Smart India Hackathon (SIH) 2026** by Team NAVRASA.
+Built for **Smart India Hackathon (SIH) 2026** by Team OribtOps {shishir s dhathri k}.
