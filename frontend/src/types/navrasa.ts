@@ -237,6 +237,10 @@ export interface ScenarioDefinition {
   id: string;
   name: string;
   description: string;
+  difficulty?: string;
+  weather?: string;
+  traffic_density?: string;
+  hazard_type?: string;
   duration_s: number;
   ego_start: {
     x: number;
