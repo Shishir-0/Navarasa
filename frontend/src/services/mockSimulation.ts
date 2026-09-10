@@ -14,7 +14,7 @@ class ClientSimulationEngine {
   private egoSpeed = 8.5;
   private cbfInterventions = 0;
 
-  public reset(scenarioId: string = "autorickshaw_cutin_blindspot") {
+  public reset(scenarioId: string = "market") {
     this.frameId = 0;
     this.simTime = 0.0;
     this.egoX = 0.0;
@@ -23,14 +23,13 @@ class ClientSimulationEngine {
     this.cbfInterventions = 0;
   }
 
-  public step(dt: number = 0.05, scenarioId: string = "autorickshaw_cutin_blindspot"): FrameBundle {
+  public step(dt: number = 0.05, scenarioId: string = "market"): FrameBundle {
     this.frameId += 1;
     this.simTime += dt;
 
     // Advance ego forward
     this.egoX += this.egoSpeed * dt;
 
-    // Simulation actor dynamics based on scenario
     const t = this.simTime;
     let narrative = "Nominal trajectory cruise. Road Intent Graph monitoring surrounding actors.";
     let cbfActive = false;
@@ -38,7 +37,6 @@ class ClientSimulationEngine {
     let steering = 0.0;
     let accel = 0.2;
 
-    // Dynamic Actors
     const tracks: any[] = [];
     const detections: any[] = [];
     const nodes: Record<string, any> = {};
@@ -59,23 +57,320 @@ class ClientSimulationEngine {
       features: [this.egoX, this.egoY, this.egoSpeed, 0, this.egoSpeed, 0, 0.5, 0.05],
     };
 
-    if (scenarioId === "autorickshaw_cutin_blindspot") {
-      // Auto-rickshaw cuts in from right lane at t=1.5s
+    if (scenarioId === "market") {
+      // Pedestrian crossing in market
+      const pedX = this.egoX + Math.max(5.0, 18.0 - t * 1.5);
+      const pedY = Math.max(-0.5, 3.5 - t * 1.0);
+      tracks.push({
+        track_id: "trk_market_ped",
+        actor_type: "PEDESTRIAN" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [pedX, pedY, 0, -1.2],
+        covariance_matrix: [[0.18, 0], [0, 0.18]],
+        position: { x: pedX, y: pedY },
+        velocity: { x: 0, y: -1.2 },
+        speed: 1.2,
+        heading: -Math.PI / 2,
+        yaw_rate: 0.0,
+        bbox: { length: 0.6, width: 0.6, height: 1.7 },
+        age: 20,
+        hits: 20,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 0.9,
+      });
+
+      // Motorcycle weaving
+      const bikeX = this.egoX + Math.max(4.0, 14.0 - t * 2.0);
+      const bikeY = t < 1.2 ? 2.5 : Math.max(0.3, 2.5 - (t - 1.2) * 1.4);
+      tracks.push({
+        track_id: "trk_market_bike",
+        actor_type: "TWO_WHEELER" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [bikeX, bikeY, 8.5, 0],
+        covariance_matrix: [[0.22, 0], [0, 0.22]],
+        position: { x: bikeX, y: bikeY },
+        velocity: { x: 8.5, y: -0.6 },
+        speed: 8.5,
+        heading: -0.1,
+        yaw_rate: 0.0,
+        bbox: { length: 2.2, width: 0.8, height: 1.4 },
+        age: 30,
+        hits: 30,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.1,
+      });
+
+      const distToBike = Math.hypot(bikeX - this.egoX, bikeY - this.egoY);
+      if (distToBike < 6.5 && t > 1.5) {
+        cbfActive = true;
+        safeMargin = 1.2;
+        accel = -2.6;
+        steering = 0.05;
+        this.egoSpeed = Math.max(3.5, this.egoSpeed - 0.15);
+        this.cbfInterventions += 1;
+        narrative = `⚠️ CBF INTERVENTION: High-order safety barrier active! Proximity to weaving bike (${distToBike.toFixed(1)}m) breaches safe envelope.`;
+      } else {
+        narrative = `Dense market: Tracking ${tracks.length} dynamic actors. GNN attention focused on weaving motorcycle.`;
+      }
+
+    } else if (scenarioId === "village") {
+      // Group of pedestrians in road corridor
+      const pedX = this.egoX + 22.0;
+      const pedY = 0.4;
+      tracks.push({
+        track_id: "trk_village_ped_01",
+        actor_type: "PEDESTRIAN" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [pedX, pedY, 0.8, 0],
+        covariance_matrix: [[0.15, 0], [0, 0.15]],
+        position: { x: pedX, y: pedY },
+        velocity: { x: 0.8, y: 0 },
+        speed: 0.8,
+        heading: 0.0,
+        yaw_rate: 0.0,
+        bbox: { length: 0.6, width: 0.6, height: 1.7 },
+        age: 25,
+        hits: 25,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 0.8,
+      });
+
+      // Oncoming tractor / truck
+      const tractorX = this.egoX + Math.max(8.0, 50.0 - t * 4.0);
+      const tractorY = 1.8;
+      tracks.push({
+        track_id: "trk_oncoming_tractor",
+        actor_type: "TRUCK" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [tractorX, tractorY, -5.0, 0],
+        covariance_matrix: [[0.3, 0], [0, 0.3]],
+        position: { x: tractorX, y: tractorY },
+        velocity: { x: -5.0, y: 0 },
+        speed: 5.0,
+        heading: Math.PI,
+        yaw_rate: 0.0,
+        bbox: { length: 5.2, width: 2.4, height: 2.8 },
+        age: 35,
+        hits: 35,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.4,
+      });
+
+      steering = -0.06;
+      narrative = "Village corridor: Kinodynamic Hybrid A* nudging around pedestrians with safe lateral boundary buffer.";
+
+    } else if (scenarioId === "highway") {
+      // High-speed merging sedan
+      const carX = this.egoX + Math.max(6.0, 24.0 - t * 1.5);
+      const carY = t < 1.0 ? 3.8 : Math.max(0.2, 3.8 - (t - 1.0) * 1.8);
+      tracks.push({
+        track_id: "trk_hwy_merger",
+        actor_type: "CAR" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [carX, carY, 14.0, 0],
+        covariance_matrix: [[0.2, 0], [0, 0.2]],
+        position: { x: carX, y: carY },
+        velocity: { x: 14.0, y: -0.8 },
+        speed: 14.0,
+        heading: -0.15,
+        yaw_rate: 0.0,
+        bbox: { length: 4.6, width: 2.0, height: 1.5 },
+        age: 40,
+        hits: 40,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.0,
+      });
+
+      narrative = "Arterial Highway: Monitoring high-speed merge trajectory. FRC top prediction indicates 88% lane merge probability.";
+
+    } else if (scenarioId === "junction") {
+      // Auto-rickshaw passenger drop stop
+      const rickX = this.egoX + Math.max(5.0, 20.0 - t * 2.5);
+      const rickY = 0.3;
+      tracks.push({
+        track_id: "trk_junc_rickshaw",
+        actor_type: "AUTORICKSHAW" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [rickX, rickY, Math.max(0.0, 7.0 - t * 2.0), 0],
+        covariance_matrix: [[0.15, 0], [0, 0.15]],
+        position: { x: rickX, y: rickY },
+        velocity: { x: Math.max(0.0, 7.0 - t * 2.0), y: 0 },
+        speed: Math.max(0.0, 7.0 - t * 2.0),
+        heading: 0.0,
+        yaw_rate: 0.0,
+        bbox: { length: 2.8, width: 1.4, height: 1.8 },
+        age: 30,
+        hits: 30,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.1,
+      });
+
+      const dist = rickX - this.egoX;
+      if (dist < 8.0) {
+        cbfActive = true;
+        safeMargin = 1.4;
+        accel = -3.2;
+        narrative = `⚠️ JUNCTION CONFLICT: Auto-rickshaw stopped abruptly ahead (${dist.toFixed(1)}m). CBF braking override active.`;
+      } else {
+        narrative = "Unsignalized 4-Way Junction: Road Intent Graph negotiating priority with crossing traffic.";
+      }
+
+    } else if (scenarioId === "rain") {
+      // Monsoon Rain with reduced visibility
+      const pedX = this.egoX + Math.max(4.0, 16.0 - t * 1.8);
+      const pedY = Math.max(-0.2, 2.5 - t * 0.9);
+      tracks.push({
+        track_id: "trk_rain_ped",
+        actor_type: "PEDESTRIAN" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [pedX, pedY, 0, -1.3],
+        covariance_matrix: [[0.35, 0], [0, 0.35]],
+        position: { x: pedX, y: pedY },
+        velocity: { x: 0, y: -1.3 },
+        speed: 1.3,
+        heading: -Math.PI / 2,
+        yaw_rate: 0.0,
+        bbox: { length: 0.6, width: 0.6, height: 1.7 },
+        age: 15,
+        hits: 15,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.5,
+      });
+
+      narrative = "Monsoon Rain: Friction coefficient mu=0.45. UKF uncertainty covariance expanded for spray occlusion compensation.";
+
+    } else if (scenarioId === "cattle" || scenarioId === "cow_blockage_lateral_nudge") {
+      // Stationary cow in ego lane
+      const cowX = this.egoX + Math.max(6.0, 28.0 - t * 1.2);
+      const cowY = -0.4;
+      tracks.push({
+        track_id: "trk_cow_01",
+        actor_type: "CATTLE" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [cowX, cowY, 0, 0],
+        covariance_matrix: [[0.1, 0], [0, 0.1]],
+        position: { x: cowX, y: cowY },
+        velocity: { x: 0, y: 0 },
+        speed: 0.0,
+        heading: 0.2,
+        yaw_rate: 0.0,
+        bbox: { length: 2.4, width: 1.1, height: 1.5 },
+        age: 50,
+        hits: 50,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 0.6,
+      });
+
+      // Oncoming bus in adjacent lane
+      const busX = this.egoX + Math.max(12.0, 60.0 - t * 6.0);
+      const busY = 2.0;
+      tracks.push({
+        track_id: "trk_oncoming_bus",
+        actor_type: "BUS" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [busX, busY, -6.5, 0],
+        covariance_matrix: [[0.25, 0], [0, 0.25]],
+        position: { x: busX, y: busY },
+        velocity: { x: -6.5, y: 0 },
+        speed: 6.5,
+        heading: Math.PI,
+        yaw_rate: 0.0,
+        bbox: { length: 9.0, width: 2.8, height: 3.2 },
+        age: 40,
+        hits: 40,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.2,
+      });
+
+      steering = 0.08;
+      narrative = "Cattle Blockage: Kinodynamic Hybrid A* generating lateral spline nudge around stationary cow.";
+
+    } else if (scenarioId === "wrong_way") {
+      // Head-on wrong-way bike in ego lane
+      const wrongBikeX = this.egoX + Math.max(3.0, 32.0 - t * 9.0);
+      const wrongBikeY = 0.1;
+      tracks.push({
+        track_id: "trk_wrong_way_bike",
+        actor_type: "TWO_WHEELER" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [wrongBikeX, wrongBikeY, -8.0, 0],
+        covariance_matrix: [[0.2, 0], [0, 0.2]],
+        position: { x: wrongBikeX, y: wrongBikeY },
+        velocity: { x: -8.0, y: 0 },
+        speed: 8.0,
+        heading: Math.PI,
+        yaw_rate: 0.0,
+        bbox: { length: 2.0, width: 0.8, height: 1.4 },
+        age: 30,
+        hits: 30,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 1.3,
+      });
+
+      const dist = wrongBikeX - this.egoX;
+      if (dist < 16.0) {
+        cbfActive = true;
+        safeMargin = 0.8;
+        accel = -4.5;
+        steering = -0.15;
+        this.egoSpeed = Math.max(1.0, this.egoSpeed - 0.3);
+        this.cbfInterventions += 1;
+        narrative = `🚨 CRITICAL SAFETY OVERRIDE: Wrong-way vehicle oncoming in ego lane (Dist: ${dist.toFixed(1)}m)! Emergency CBF braking and evasive lateral swerve active!`;
+      } else {
+        narrative = "Wrong-Way Vehicle Detected: Road Intent Graph flagged CONFLICT edge. Priming emergency deceleration envelope.";
+      }
+
+    } else if (scenarioId === "pothole") {
+      // Pothole cluster
+      const potX = this.egoX + 22.0;
+      const potY = -0.3;
+      tracks.push({
+        track_id: "trk_pothole_01",
+        actor_type: "POTHOLE" as ActorType,
+        status: "CONFIRMED" as TrackStatus,
+        state_vector: [potX, potY, 0, 0],
+        covariance_matrix: [[0.1, 0], [0, 0.1]],
+        position: { x: potX, y: potY },
+        velocity: { x: 0, y: 0 },
+        speed: 0.0,
+        heading: 0.0,
+        yaw_rate: 0.0,
+        bbox: { length: 1.2, width: 1.2, height: 0.2 },
+        age: 30,
+        hits: 30,
+        misses: 0,
+        time_since_update: 0.0,
+        mahalanobis_distance: 0.5,
+      });
+
+      steering = 0.06;
+      narrative = "Degraded Road: Road surface anomaly mapped. Quintic spline optimizer executing comfort-bounded lateral swerve.";
+
+    } else {
+      // Default / autorickshaw_cutin_blindspot
       const rickshawX = this.egoX + Math.max(3.0, 15.0 - t * 1.8);
       const rickshawY = t < 1.5 ? 3.2 : Math.max(0.2, 3.2 - (t - 1.5) * 1.2);
-      const rickshawSpeed = 7.0;
-
       tracks.push({
         track_id: "trk_rickshaw_01",
         actor_type: "AUTORICKSHAW" as ActorType,
         status: "CONFIRMED" as TrackStatus,
-        state_vector: [rickshawX, rickshawY, rickshawSpeed, 0],
+        state_vector: [rickshawX, rickshawY, 7.0, 0],
         covariance_matrix: [[0.15, 0], [0, 0.15]],
         position: { x: rickshawX, y: rickshawY },
-        velocity: { x: rickshawSpeed, y: t > 1.5 ? -0.8 : 0 },
-        speed: rickshawSpeed,
+        velocity: { x: 7.0, y: t > 1.5 ? -0.8 : 0 },
+        speed: 7.0,
         heading: t > 1.5 ? -0.15 : 0.0,
-        yaw_rate: t > 1.5 ? -0.05 : 0.0,
+        yaw_rate: 0.0,
         bbox: { length: 2.8, width: 1.4, height: 1.8 },
         age: 24,
         hits: 24,
@@ -84,88 +379,15 @@ class ClientSimulationEngine {
         mahalanobis_distance: 1.2,
       });
 
-      // Pedestrian crossing from blind spot
-      const pedX = this.egoX + 22.0;
-      const pedY = Math.max(-1.5, 5.0 - t * 0.8);
-      tracks.push({
-        track_id: "trk_pedestrian_01",
-        actor_type: "PEDESTRIAN" as ActorType,
-        status: "CONFIRMED" as TrackStatus,
-        state_vector: [pedX, pedY, 0, -1.2],
-        covariance_matrix: [[0.2, 0], [0, 0.2]],
-        position: { x: pedX, y: pedY },
-        velocity: { x: 0, y: -1.2 },
-        speed: 1.2,
-        heading: -Math.PI / 2,
-        yaw_rate: 0.0,
-        bbox: { length: 0.6, width: 0.6, height: 1.7 },
-        age: 18,
-        hits: 18,
-        misses: 0,
-        time_since_update: 0.0,
-        mahalanobis_distance: 0.8,
-      });
-
-      // Check proximity and trigger CBF if critical
-      const distToRickshaw = Math.hypot(rickshawX - this.egoX, rickshawY - this.egoY);
-      if (distToRickshaw < 7.0 && t > 2.0) {
+      const dist = Math.hypot(rickshawX - this.egoX, rickshawY - this.egoY);
+      if (dist < 7.0 && t > 2.0) {
         cbfActive = true;
         safeMargin = 1.1;
         accel = -2.8;
         steering = 0.08;
         this.egoSpeed = Math.max(3.0, this.egoSpeed - 0.1);
         this.cbfInterventions += 1;
-        narrative = `⚠️ CBF INTERVENTION ACTIVE: Proximity to Auto-Rickshaw (${distToRickshaw.toFixed(1)}m) violates safe barrier margin. Decelerating to ${this.egoSpeed.toFixed(1)} m/s.`;
-      } else if (distToRickshaw < 14.0) {
-        narrative = `Road Intent Graph: Anticipating lateral cut-in from Autorickshaw (TTC: ${(distToRickshaw / 3.0).toFixed(1)}s). GNN edge attention elevated to 0.88.`;
-      }
-    } else if (scenarioId === "cow_blockage_lateral_nudge") {
-      const cowX = this.egoX + Math.max(0.0, 20.0 - t * 2.0);
-      const cowY = -0.5;
-
-      tracks.push({
-        track_id: "trk_cattle_01",
-        actor_type: "CATTLE" as ActorType,
-        status: "CONFIRMED" as TrackStatus,
-        state_vector: [cowX, cowY, 0, 0],
-        covariance_matrix: [[0.1, 0], [0, 0.1]],
-        position: { x: cowX, y: cowY },
-        velocity: { x: 0, y: 0 },
-        speed: 0.0,
-        heading: 0.3,
-        yaw_rate: 0.0,
-        bbox: { length: 2.2, width: 1.1, height: 1.5 },
-        age: 50,
-        hits: 50,
-        misses: 0,
-        time_since_update: 0.0,
-        mahalanobis_distance: 0.4,
-      });
-
-      // Oncoming Bus
-      const busX = this.egoX + 45.0 - t * 4.0;
-      tracks.push({
-        track_id: "trk_bus_01",
-        actor_type: "BUS" as ActorType,
-        status: "CONFIRMED" as TrackStatus,
-        state_vector: [busX, 2.5, -6.0, 0],
-        covariance_matrix: [[0.2, 0], [0, 0.2]],
-        position: { x: busX, y: 2.5 },
-        velocity: { x: -6.0, y: 0 },
-        speed: 6.0,
-        heading: Math.PI,
-        yaw_rate: 0.0,
-        bbox: { length: 10.5, width: 2.6, height: 3.2 },
-        age: 40,
-        hits: 40,
-        misses: 0,
-        time_since_update: 0.0,
-        mahalanobis_distance: 1.1,
-      });
-
-      if (cowX - this.egoX < 15.0 && cowX - this.egoX > 0) {
-        steering = -0.15; // Nudge left around cow
-        narrative = "Kinodynamic Hybrid A* actively nudging around stationary cattle. Preserving CBF safety corridor against oncoming Bus.";
+        narrative = `⚠️ CBF INTERVENTION ACTIVE: Proximity to Auto-Rickshaw (${dist.toFixed(1)}m) violates safe barrier margin.`;
       }
     }
 
@@ -173,168 +395,114 @@ class ClientSimulationEngine {
     tracks.forEach((trk) => {
       nodes[trk.track_id] = {
         node_id: trk.track_id,
-        node_type: trk.actor_type === "PEDESTRIAN" || trk.actor_type === "CATTLE" ? "VULNERABLE_ROAD_USER" : "DYNAMIC_ACTOR",
+        node_type: "DYNAMIC_ACTOR" as IntentNodeType,
         actor_type: trk.actor_type,
         position: trk.position,
         velocity: trk.velocity,
         heading: trk.heading,
         speed: trk.speed,
-        priority_score: trk.actor_type === "CATTLE" ? 0.95 : trk.actor_type === "PEDESTRIAN" ? 0.90 : 0.65,
-        uncertainty: 0.15,
-        features: [trk.position.x, trk.position.y, trk.velocity.x, trk.velocity.y, trk.speed, trk.heading, 0.7, 0.15],
+        priority_score: 0.75,
+        uncertainty: 0.12,
+        features: [trk.position.x, trk.position.y, trk.velocity.x, trk.velocity.y, trk.speed, trk.heading, 0.75, 0.12],
       };
 
       const dist = Math.hypot(trk.position.x - this.egoX, trk.position.y - this.egoY);
       const isConflict = dist < 12.0;
+
       edges.push({
         source_id: "ego",
         target_id: trk.track_id,
-        edge_type: isConflict ? ("CONFLICT" as IntentEdgeType) : ("PROXIMITY" as IntentEdgeType),
-        weight: Math.max(0.1, 1.0 - dist / 30.0),
+        edge_type: isConflict ? ("CONFLICT" as IntentEdgeType) : ("MERGING" as IntentEdgeType),
+        weight: isConflict ? 0.88 : 0.45,
         spatial_distance: dist,
-        time_to_collision: dist > 1.0 ? dist / 5.0 : 0.5,
-        relative_velocity: 3.2,
-        attention_weight: isConflict ? 0.85 : 0.35,
+        time_to_collision: dist / Math.max(1.0, this.egoSpeed),
+        relative_velocity: 1.5,
+        attention_weight: isConflict ? 0.88 : 0.45,
       });
-    });
 
-    // Multi-modal Predictions
-    tracks.forEach((trk) => {
+      // Generate FRC Predictions
       predictions[trk.track_id] = {
         actor_id: trk.track_id,
         actor_type: trk.actor_type,
-        most_likely_hypothesis: `${trk.track_id}_nom`,
-        epistemic_uncertainty: 0.15,
+        most_likely_hypothesis: "hyp_01",
+        epistemic_uncertainty: 0.14,
         hypotheses: [
           {
-            hypothesis_id: `${trk.track_id}_nom`,
-            maneuver_name: "CRUISE_STRAIGHT",
-            probability: 0.55,
-            waypoints: Array.from({ length: 25 }, (_, i) => {
-              const dtStep = (i + 1) * 0.1;
-              return {
-                x: trk.position.x + trk.speed * Math.cos(trk.heading) * dtStep,
-                y: trk.position.y + trk.speed * Math.sin(trk.heading) * dtStep,
-                v: trk.speed,
-                yaw: trk.heading,
-                curvature: 0,
-                acceleration: 0,
-                jerk: 0,
-                time: dtStep,
-                std_x: 0.1 + 0.15 * dtStep,
-                std_y: 0.1 + 0.15 * dtStep,
-              };
-            }),
+            hypothesis_id: "hyp_01",
+            maneuver_name: isConflict ? "AGGRESSIVE_CUT_IN" : "NOMINAL_LANE_FOLLOW",
+            probability: 0.72,
+            waypoints: [
+              { x: trk.position.x, y: trk.position.y, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 0, std_x: 0.1, std_y: 0.1 },
+              { x: trk.position.x + trk.speed * 0.5, y: trk.position.y - 0.2, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 0.5, std_x: 0.2, std_y: 0.2 },
+              { x: trk.position.x + trk.speed * 1.0, y: trk.position.y - 0.5, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 1.0, std_x: 0.35, std_y: 0.35 },
+              { x: trk.position.x + trk.speed * 1.5, y: trk.position.y - 0.7, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 1.5, std_x: 0.5, std_y: 0.5 },
+            ],
           },
           {
-            hypothesis_id: `${trk.track_id}_swerve`,
-            maneuver_name: "AGGRESSIVE_CUT_IN",
-            probability: 0.30,
-            waypoints: Array.from({ length: 25 }, (_, i) => {
-              const dtStep = (i + 1) * 0.1;
-              return {
-                x: trk.position.x + trk.speed * 0.9 * dtStep,
-                y: trk.position.y - 0.4 * dtStep * dtStep,
-                v: trk.speed * 0.9,
-                yaw: trk.heading - 0.2,
-                curvature: 0.05,
-                acceleration: 0,
-                jerk: 0,
-                time: dtStep,
-                std_x: 0.15 + 0.25 * dtStep,
-                std_y: 0.15 + 0.25 * dtStep,
-              };
-            }),
-          },
-          {
-            hypothesis_id: `${trk.track_id}_brake`,
-            maneuver_name: "YIELD_DECELERATE",
-            probability: 0.15,
-            waypoints: Array.from({ length: 25 }, (_, i) => {
-              const dtStep = (i + 1) * 0.1;
-              return {
-                x: trk.position.x + Math.max(0, trk.speed - 1.5 * dtStep) * dtStep,
-                y: trk.position.y,
-                v: Math.max(0, trk.speed - 1.5 * dtStep),
-                yaw: trk.heading,
-                curvature: 0,
-                acceleration: -1.5,
-                jerk: 0,
-                time: dtStep,
-                std_x: 0.1 + 0.1 * dtStep,
-                std_y: 0.1 + 0.1 * dtStep,
-              };
-            }),
+            hypothesis_id: "hyp_02",
+            maneuver_name: "LANE_KEEP",
+            probability: 0.28,
+            waypoints: [
+              { x: trk.position.x, y: trk.position.y, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 0, std_x: 0.1, std_y: 0.1 },
+              { x: trk.position.x + trk.speed * 0.5, y: trk.position.y, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 0.5, std_x: 0.2, std_y: 0.2 },
+              { x: trk.position.x + trk.speed * 1.0, y: trk.position.y, v: trk.speed, yaw: trk.heading, curvature: 0, acceleration: 0, jerk: 0, time: 1.0, std_x: 0.35, std_y: 0.35 },
+            ],
           },
         ],
       };
     });
 
-    // Simulated LiDAR Points (150 radial hits)
-    for (let i = 0; i < 120; i++) {
-      const angle = (i / 120) * Math.PI * 2;
-      const baseRange = 25.0 + 10.0 * Math.sin(angle * 3.0 + t);
-      detections.push({
-        detection_id: `lidar_${i}`,
-        sensor_type: "LIDAR",
-        position: {
-          x: this.egoX + baseRange * Math.cos(angle),
-          y: this.egoY + baseRange * Math.sin(angle),
-        },
-        bbox: { length: 0.2, width: 0.2, height: 0.2 },
-        confidence: 0.98,
-        covariance: [[0.05, 0], [0, 0.05]],
+    // Generate Planned Trajectory Waypoints
+    const plannedWaypoints = [];
+    for (let i = 0; i <= 20; i++) {
+      const s = i * 2.5;
+      const wpX = this.egoX + s;
+      const wpY = this.egoY + (steering !== 0 ? Math.sin(s * 0.08) * steering * 4.0 : 0.0);
+      plannedWaypoints.push({
+        x: wpX,
+        y: wpY,
+        v: this.egoSpeed,
+        yaw: 0.0,
+        curvature: 0.01,
+        acceleration: accel,
+        jerk: 0.0,
+        time: s / Math.max(1.0, this.egoSpeed),
+        std_x: 0.15,
+        std_y: 0.15,
       });
     }
 
-    // 2D Risk Grid Map (40x40 grid around ego)
-    const riskGridSize = 30;
+    // Generate Risk Map Grid
+    const riskGridSize = 25;
     const riskData: number[][] = [];
     for (let r = 0; r < riskGridSize; r++) {
       const row: number[] = [];
-      const yCoord = this.egoY - 15 + r;
       for (let c = 0; c < riskGridSize; c++) {
-        const xCoord = this.egoX - 10 + c * 1.5;
-        let riskVal = 0.05;
+        let maxR = 0.05;
+        const cellX = this.egoX - 10 + c * 1.5;
+        const cellY = this.egoY - 15 + r * 1.5;
         tracks.forEach((trk) => {
-          const d = Math.hypot(xCoord - trk.position.x, yCoord - trk.position.y);
-          riskVal += Math.exp(-0.5 * (d / 2.5) ** 2) * (trk.speed > 0 ? 0.7 : 0.5);
+          const d = Math.hypot(cellX - trk.position.x, cellY - trk.position.y);
+          if (d < 5.0) {
+            maxR = Math.max(maxR, Math.exp(-d * 0.6));
+          }
         });
-        row.push(Math.min(1.0, riskVal));
+        row.push(maxR);
       }
       riskData.push(row);
     }
-
-    // Planned Path (Hybrid A* Waypoints)
-    const plannedWaypoints = Array.from({ length: 30 }, (_, i) => {
-      const stepT = i * 0.1;
-      const pX = this.egoX + i * 1.8;
-      const pY = this.egoY + (cbfActive ? -0.8 : 0.0) * Math.sin(i * 0.15);
-      return {
-        x: pX,
-        y: pY,
-        v: this.egoSpeed,
-        yaw: 0.0,
-        curvature: 0.02,
-        acceleration: 0.0,
-        jerk: 0.05,
-        time: stepT,
-        std_x: 0.1,
-        std_y: 0.1,
-      };
-    });
 
     return {
       frame_id: this.frameId,
       timestamp: this.simTime,
       ego_state: {
         actor_id: "ego",
-        actor_type: "EGO",
+        actor_type: "EGO" as ActorType,
         position: { x: this.egoX, y: this.egoY },
         heading: 0.0,
         velocity: { x: this.egoSpeed, y: 0.0 },
         speed: this.egoSpeed,
-        yaw_rate: 0.0,
+        yaw_rate: steering * 0.5,
         acceleration: accel,
         bbox: { length: 4.8, width: 2.0, height: 1.5 },
         is_occluded: false,
@@ -346,7 +514,7 @@ class ClientSimulationEngine {
         timestamp: this.simTime,
         nodes: nodes,
         edges: edges,
-        conflict_hotspots: cbfActive ? [{ x: this.egoX + 6.0, y: 1.0 }] : [],
+        conflict_hotspots: [],
       },
       predictions: {
         timestamp: this.simTime,
@@ -358,7 +526,7 @@ class ClientSimulationEngine {
         timestamp: this.simTime,
         origin_x: this.egoX - 10,
         origin_y: this.egoY - 15,
-        resolution: 1.0,
+        resolution: 1.5,
         width: riskGridSize,
         height: riskGridSize,
         data: riskData,
@@ -369,7 +537,7 @@ class ClientSimulationEngine {
         waypoints: plannedWaypoints,
         is_replan: cbfActive,
         planning_time_ms: 18.5,
-        path_length: 54.0,
+        path_length: 50.0,
         max_curvature: 0.12,
         max_jerk: 0.18,
         cost: 45.2,

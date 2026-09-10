@@ -11,7 +11,9 @@ import {
   MapPin, 
   Check, 
   ChevronRight,
-  Flame
+  Flame,
+  Activity,
+  Navigation
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx } from "clsx";
@@ -23,197 +25,207 @@ export interface ScenarioCardItem {
   difficulty: "LEVEL 1" | "LEVEL 2" | "LEVEL 3" | "LEVEL 4" | "LEVEL 5";
   difficultyColor: "emerald" | "cyan" | "amber" | "crimson";
   trafficDensity: "LOW" | "MEDIUM" | "HIGH" | "CHAOTIC";
-  weather: "CLEAR" | "OVERCAST" | "MONSOON RAIN" | "DUSK DUST";
+  weather: "CLEAR" | "OVERCAST" | "MONSOON RAIN" | "DUSK DUST" | "FOG";
   keyChallenge: string;
   icon: React.ReactNode;
 }
 
 export const SCENARIO_BENCHMARKS: ScenarioCardItem[] = [
   {
+    id: "market",
+    name: "Crowded Market Street",
+    tagline: "Dense Indian market street with pedestrians crossing and weaving motorcycles",
+    difficulty: "LEVEL 4",
+    difficultyColor: "crimson",
+    trafficDensity: "CHAOTIC",
+    weather: "CLEAR",
+    keyChallenge: "Multi-Actor Tracking & Motorcycle Weave Anticipation",
+    icon: <Zap className="w-5 h-5 text-neon-cyan" />,
+  },
+  {
+    id: "village",
+    name: "Unmarked Village Road",
+    tagline: "Narrow rural corridor with pedestrian group in road and oncoming tractor",
+    difficulty: "LEVEL 3",
+    difficultyColor: "amber",
+    trafficDensity: "MEDIUM",
+    weather: "CLEAR",
+    keyChallenge: "Kinodynamic Hybrid A* Nudging & Corridor Boundary Buffering",
+    icon: <MapPin className="w-5 h-5 text-emerald-400" />,
+  },
+  {
+    id: "highway",
+    name: "High-Speed Highway Merge",
+    tagline: "Arterial highway with high closing velocity delta and dual merge negotiation",
+    difficulty: "LEVEL 4",
+    difficultyColor: "cyan",
+    trafficDensity: "HIGH",
+    weather: "OVERCAST",
+    keyChallenge: "Future Road Composer (FRC) Top-3 Trajectory Estimation",
+    icon: <Navigation className="w-5 h-5 text-blue-400" />,
+  },
+  {
+    id: "junction",
+    name: "Unsignalized 4-Way Junction",
+    tagline: "Unregulated cross-junction with abrupt auto passenger drop stop",
+    difficulty: "LEVEL 5",
+    difficultyColor: "crimson",
+    trafficDensity: "CHAOTIC",
+    weather: "CLEAR",
+    keyChallenge: "Road Intent Graph Relational Reasoning & Right-of-Way Negotiation",
+    icon: <Compass className="w-5 h-5 text-amber-400" />,
+  },
+  {
+    id: "rain",
+    name: "Monsoon Rain & Fog Occlusion",
+    tagline: "Wet road surface (mu=0.45) with dense spray and late-emerging fog pedestrian",
+    difficulty: "LEVEL 4",
+    difficultyColor: "cyan",
+    trafficDensity: "MEDIUM",
+    weather: "MONSOON RAIN",
+    keyChallenge: "UKF Covariance Expansion & Safety-Critical Braking Margin",
+    icon: <CloudRain className="w-5 h-5 text-cyan-300" />,
+  },
+  {
+    id: "cattle",
+    name: "Stationary Cattle Lane Blockage",
+    tagline: "Stationary cow blocking travel corridor requiring spatial nudge against oncoming bus",
+    difficulty: "LEVEL 3",
+    difficultyColor: "amber",
+    trafficDensity: "MEDIUM",
+    weather: "CLEAR",
+    keyChallenge: "CBF Invariance Safety Barrier & Kinodynamic Spline Optimization",
+    icon: <Truck className="w-5 h-5 text-amber-400" />,
+  },
+  {
+    id: "wrong_way",
+    name: "Wrong-Way Vehicle Avoidance",
+    tagline: "Head-on two-wheeler oncoming in ego travel lane",
+    difficulty: "LEVEL 5",
+    difficultyColor: "crimson",
+    trafficDensity: "HIGH",
+    weather: "DUSK DUST",
+    keyChallenge: "Emergency CBF Barrier Activation & Evasive Steering",
+    icon: <ShieldAlert className="w-5 h-5 text-rose-400" />,
+  },
+  {
+    id: "pothole",
+    name: "Pothole & Degraded Road Swerve",
+    tagline: "Severe road surface anomalies requiring comfort-bounded lateral swerving",
+    difficulty: "LEVEL 3",
+    difficultyColor: "emerald",
+    trafficDensity: "LOW",
+    weather: "CLEAR",
+    keyChallenge: "Quintic Spline Optimizer Swerve Trajectory & Risk Contours",
+    icon: <Activity className="w-5 h-5 text-emerald-400" />,
+  },
+  {
     id: "autorickshaw_cutin_blindspot",
-    name: "Auto-Rickshaw Blindspot Cut-in",
-    tagline: "Aggressive autorickshaw lane cut-in with occluded pedestrian crossing",
+    name: "Auto-Rickshaw Sudden Cut-in",
+    tagline: "Aggressive autorickshaw cut-in with occluded pedestrian crossing",
     difficulty: "LEVEL 4",
     difficultyColor: "crimson",
     trafficDensity: "HIGH",
     weather: "CLEAR",
     keyChallenge: "CBF Safety Barrier Intervention & Sudden Deceleration",
-    icon: <Zap className="w-5 h-5 text-cyber-cyan" />,
-  },
-  {
-    id: "unmarked_intersection_chaos",
-    name: "Unmarked 4-Way Junction Chaos",
-    tagline: "Unsignalized Indian intersection with multi-directional crossing flows",
-    difficulty: "LEVEL 5",
-    difficultyColor: "crimson",
-    trafficDensity: "CHAOTIC",
-    weather: "CLEAR",
-    keyChallenge: "GNN Relational Intent Reasoning & Right-of-Way Negotiation",
-    icon: <Compass className="w-5 h-5 text-cyber-amber" />,
-  },
-  {
-    id: "cow_blockage_lateral_nudge",
-    name: "Stationary Cattle Lateral Nudge",
-    tagline: "Sacred cow blocking travel corridor requiring spatial nudging",
-    difficulty: "LEVEL 3",
-    difficultyColor: "amber",
-    trafficDensity: "MEDIUM",
-    weather: "CLEAR",
-    keyChallenge: "Kinodynamic Hybrid A* Kinematic Nudge with Oncoming Traffic",
-    icon: <AlertTriangle className="w-5 h-5 text-cyber-emerald" />,
-  },
-  {
-    id: "market_bazaar_crowd",
-    name: "Dense Bazaar & Pedestrian Flow",
-    tagline: "Hyper-dense market lane with non-lane pedestrian crowds and cycles",
-    difficulty: "LEVEL 5",
-    difficultyColor: "crimson",
-    trafficDensity: "CHAOTIC",
-    weather: "DUSK DUST",
-    keyChallenge: "Dynamic Repulsive Potential Field & Occlusion Shadows",
-    icon: <Flame className="w-5 h-5 text-cyber-crimson" />,
-  },
-  {
-    id: "wrong_way_twowheeler",
-    name: "Wrong-Way Two-Wheeler Head-On",
-    tagline: "Motorcycle driving against traffic direction on a single-lane road",
-    difficulty: "LEVEL 4",
-    difficultyColor: "amber",
-    trafficDensity: "MEDIUM",
-    weather: "CLEAR",
-    keyChallenge: "TTC Horizon Shrinkage & Rapid Trajectory Evasion",
-    icon: <Zap className="w-5 h-5 text-cyber-amber" />,
-  },
-  {
-    id: "monsoon_rain_slick",
-    name: "Monsoon Wet Surface Low-Friction",
-    tagline: "Reduced tyre-road friction (μ=0.40) with standing water reflection",
-    difficulty: "LEVEL 4",
-    difficultyColor: "cyan",
-    trafficDensity: "HIGH",
-    weather: "MONSOON RAIN",
-    keyChallenge: "Conservative CBF Invariant Boundary Expansion",
-    icon: <CloudRain className="w-5 h-5 text-cyber-cyan" />,
-  },
-  {
-    id: "highway_high_speed_overtake",
-    name: "National Highway High-Speed Overtake",
-    tagline: "Longitudinal cruise with high differential speed freight trucks",
-    difficulty: "LEVEL 2",
-    difficultyColor: "emerald",
-    trafficDensity: "MEDIUM",
-    weather: "CLEAR",
-    keyChallenge: "Quintic Spline Jerk-Minimizing Smooth Lane Change",
-    icon: <Truck className="w-5 h-5 text-cyber-emerald" />,
-  },
-  {
-    id: "pothole_crater_avoidance",
-    name: "Severe Monsoon Pothole Avoidance",
-    tagline: "Deep localized crater obstacles requiring curvature-bounded evasions",
-    difficulty: "LEVEL 3",
-    difficultyColor: "cyan",
-    trafficDensity: "LOW",
-    weather: "OVERCAST",
-    keyChallenge: "Curvature-Constrained Lateral Spline Optimization",
-    icon: <MapPin className="w-5 h-5 text-cyber-cyan" />,
+    icon: <Zap className="w-5 h-5 text-neon-cyan" />,
   },
 ];
 
-interface ScenarioCardGridProps {
-  onSelectScenario?: (scenarioId: string) => void;
-  className?: string;
-}
+export const ScenarioCardGrid: React.FC<{
+  onSelect?: (id: string) => void;
+  onSelectScenario?: () => void;
+}> = ({ onSelect, onSelectScenario }) => {
+  const { activeScenarioId, setScenario } = useTelemetryStore();
+  const { resetReplay } = usePlaybackStore();
 
-export const ScenarioCardGrid: React.FC<ScenarioCardGridProps> = ({ onSelectScenario, className }) => {
-  const activeScenarioId = useTelemetryStore((state) => state.activeScenarioId);
-  const setScenario = useTelemetryStore((state) => state.setScenario);
-  const clearBuffer = useTelemetryStore((state) => state.clearBuffer);
-  const setScrubberIndex = usePlaybackStore((state) => state.setScrubberIndex);
-
-  const handleSelect = (scenario: ScenarioCardItem) => {
-    setScenario(scenario.id);
-    clearBuffer();
-    setScrubberIndex(0);
-    if (onSelectScenario) {
-      onSelectScenario(scenario.id);
-    }
-  };
-
-  const difficultyStyles = {
-    emerald: "text-cyber-emerald border-cyber-emerald/40 bg-cyber-emerald/10",
-    cyan: "text-cyber-cyan border-cyber-cyan/40 bg-cyber-cyan/10",
-    amber: "text-cyber-amber border-cyber-amber/40 bg-cyber-amber/10",
-    crimson: "text-cyber-crimson border-cyber-crimson/40 bg-cyber-crimson/10",
+  const handleSelect = (id: string) => {
+    setScenario(id);
+    resetReplay();
+    if (onSelect) onSelect(id);
+    if (onSelectScenario) onSelectScenario();
   };
 
   return (
-    <div className={clsx("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4", className)}>
-      {SCENARIO_BENCHMARKS.map((scen) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {SCENARIO_BENCHMARKS.map((scen, idx) => {
         const isSelected = activeScenarioId === scen.id;
+
         return (
           <motion.div
             key={scen.id}
-            whileHover={{ scale: 1.02, translateY: -2 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleSelect(scen)}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05, duration: 0.3 }}
+            onClick={() => handleSelect(scen.id)}
             className={clsx(
-              "p-4 rounded-xl border font-mono transition-all duration-300 cursor-pointer relative overflow-hidden backdrop-blur-md flex flex-col justify-between group",
+              "group relative flex flex-col justify-between p-4 rounded-2xl cursor-pointer transition-all duration-300 border backdrop-blur-xl overflow-hidden",
               isSelected
-                ? "bg-panel/95 border-cyber-cyan shadow-cyan-glow ring-1 ring-cyber-cyan/50"
-                : "bg-panel/60 border-slate-800 hover:border-slate-600 hover:bg-panel/85"
+                ? "bg-space-900/90 border-neon-cyan/80 ring-1 ring-neon-cyan/40 shadow-neon-cyan/15 shadow-xl scale-[1.02]"
+                : "bg-space-950/60 border-white/10 hover:border-white/25 hover:bg-space-900/50"
             )}
           >
-            {/* Top Accent Strip */}
-            <div
-              className={clsx(
-                "absolute top-0 left-0 right-0 h-1 transition-all",
-                isSelected ? "bg-cyber-cyan" : "bg-transparent group-hover:bg-slate-700"
-              )}
-            />
+            {/* Top Row: Icon & Status Badge */}
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div
+                className={clsx(
+                  "p-2.5 rounded-xl border transition-all",
+                  isSelected
+                    ? "bg-neon-cyan/20 border-neon-cyan/40 shadow-inner"
+                    : "bg-white/5 border-white/10 group-hover:bg-white/10"
+                )}
+              >
+                {scen.icon}
+              </div>
 
-            <div>
-              {/* Header: Icon, Name & Selection Badge */}
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800">
-                  {scen.icon}
-                </div>
+              <div className="flex items-center gap-1.5">
                 <span
                   className={clsx(
-                    "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border",
-                    difficultyStyles[scen.difficultyColor]
+                    "px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase border",
+                    scen.difficultyColor === "crimson"
+                      ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                      : scen.difficultyColor === "cyan"
+                      ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                      : scen.difficultyColor === "amber"
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                      : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                   )}
                 >
                   {scen.difficulty}
                 </span>
-              </div>
 
-              {/* Title & Tagline */}
-              <h4 className="text-sm font-bold text-white tracking-wide group-hover:text-cyber-cyan transition-colors line-clamp-1">
+                {isSelected && (
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-neon-cyan text-space-950">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Title & Tagline */}
+            <div className="flex flex-col mb-4">
+              <h3 className="font-sans font-bold text-white text-sm group-hover:text-neon-cyan transition-colors line-clamp-1">
                 {scen.name}
-              </h4>
-              <p className="text-[11px] text-hud-secondary mt-1 line-clamp-2 leading-relaxed font-sans">
+              </h3>
+              <p className="text-xs text-white/60 font-sans mt-1 line-clamp-2 leading-relaxed">
                 {scen.tagline}
               </p>
             </div>
 
-            {/* Meta Tags Footer */}
-            <div className="mt-4 pt-3 border-t border-slate-800/80 text-[10px] text-slate-400 space-y-1.5">
+            {/* Bottom Metadata & Challenge */}
+            <div className="pt-3 border-t border-white/10 flex flex-col gap-2 text-[11px] font-mono text-white/70">
               <div className="flex items-center justify-between">
-                <span>Density: <strong className="text-slate-200">{scen.trafficDensity}</strong></span>
-                <span>Weather: <strong className="text-slate-200">{scen.weather}</strong></span>
+                <span className="text-white/40">Density:</span>
+                <span className="font-semibold text-white/90">{scen.trafficDensity}</span>
               </div>
-              <div className="text-[10px] text-cyber-cyan/90 truncate font-sans">
+              <div className="flex items-center justify-between">
+                <span className="text-white/40">Weather:</span>
+                <span className="font-semibold text-white/90">{scen.weather}</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-[10px] text-white/80 line-clamp-1">
                 ⚡ {scen.keyChallenge}
               </div>
             </div>
-
-            {/* Selected Indicator */}
-            {isSelected && (
-              <div className="absolute bottom-2 right-2 flex items-center gap-1 text-[10px] text-cyber-cyan font-bold">
-                <Check className="w-3.5 h-3.5" />
-                ACTIVE
-              </div>
-            )}
           </motion.div>
         );
       })}

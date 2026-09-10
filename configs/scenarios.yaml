@@ -1,4 +1,245 @@
 scenarios:
+  - id: "market"
+    name: "Crowded Market Street Scenario"
+    description: "Dense Indian market street with pedestrians crossing unpredictably and weaving motorcycles cutting through tight traffic gaps."
+    duration_s: 15.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 6.5
+    target_goal:
+      x: 75.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "pedestrian_market_01"
+        type: "PEDESTRIAN"
+        start_x: 12.0
+        start_y: 3.5
+        heading: -1.5708
+        speed: 1.6
+        behavior: "CROSSING"
+        trigger_time_s: 1.0
+      - id: "motorcycle_weave_01"
+        type: "TWO_WHEELER"
+        start_x: 22.0
+        start_y: 1.2
+        heading: 0.0
+        speed: 9.0
+        behavior: "CUT_IN"
+        trigger_time_s: 1.5
+      - id: "parked_vendor_cart"
+        type: "STATIC_OBSTACLE"
+        start_x: 28.0
+        start_y: 3.8
+        heading: 0.0
+        speed: 0.0
+        behavior: "STATIC"
+        trigger_time_s: 0.0
+
+  - id: "village"
+    name: "Unmarked Village Road Scenario"
+    description: "Narrow rural road corridor with unpaved shoulders and a group of pedestrians walking in the middle of the road without footpaths."
+    duration_s: 14.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 7.0
+    target_goal:
+      x: 65.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "village_ped_group"
+        type: "PEDESTRIAN"
+        start_x: 25.0
+        start_y: 0.6
+        heading: 0.0
+        speed: 1.2
+        behavior: "CROSSING"
+        trigger_time_s: 0.5
+      - id: "oncoming_tractor"
+        type: "TRUCK"
+        start_x: 55.0
+        start_y: 1.8
+        heading: 3.1415
+        speed: 4.5
+        behavior: "ONCOMING"
+        trigger_time_s: 0.0
+
+  - id: "highway"
+    name: "High-Speed Highway Merge Scenario"
+    description: "Multi-lane arterial highway with high closing velocity delta, diagonal truck occlusion, and dual lane merge negotiation."
+    duration_s: 16.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 16.0
+    target_goal:
+      x: 120.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "merging_sedan"
+        type: "CAR"
+        start_x: 35.0
+        start_y: 3.8
+        heading: -0.2
+        speed: 14.5
+        behavior: "CUT_IN"
+        trigger_time_s: 2.0
+      - id: "fast_overtaking_suv"
+        type: "CAR"
+        start_x: -15.0
+        start_y: -3.6
+        heading: 0.0
+        speed: 22.0
+        behavior: "OVERTAKING"
+        trigger_time_s: 1.0
+
+  - id: "junction"
+    name: "Unsignalized 4-Way Junction Scenario"
+    description: "Complex unsignalized Indian cross-junction where an auto-rickshaw suddenly halts to drop a passenger while cross-traffic negotiates priority."
+    duration_s: 14.0
+    ego_start:
+      x: -30.0
+      y: 0.0
+      heading: 0.0
+      speed: 7.0
+    target_goal:
+      x: 40.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "rickshaw_dropoff"
+        type: "AUTORICKSHAW"
+        start_x: 12.0
+        start_y: 0.4
+        heading: 0.0
+        speed: 6.0
+        behavior: "CUT_IN"
+        trigger_time_s: 2.0
+      - id: "cross_traffic_car"
+        type: "CAR"
+        start_x: 5.0
+        start_y: -25.0
+        heading: 1.5708
+        speed: 6.5
+        behavior: "CROSSING"
+        trigger_time_s: 1.5
+
+  - id: "rain"
+    name: "Monsoon Rain & Fog Occlusion Scenario"
+    description: "Heavy precipitation with reduced road friction coefficient (mu=0.45), dense spray, and a late-emerging pedestrian in fog."
+    duration_s: 12.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 7.5
+    target_goal:
+      x: 60.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "fog_emerging_ped"
+        type: "PEDESTRIAN"
+        start_x: 16.0
+        start_y: 2.5
+        heading: -1.5708
+        speed: 1.4
+        behavior: "CROSSING"
+        trigger_time_s: 1.5
+
+  - id: "cattle"
+    name: "Stationary Cattle Lane Blockage Scenario"
+    description: "A stationary cow blocks the ego travel lane, requiring kinodynamic Hybrid A* nudging around the animal without violating CBF safety barriers against oncoming traffic."
+    duration_s: 15.0
+    ego_start:
+      x: 0.0
+      y: -1.75
+      heading: 0.0
+      speed: 7.0
+    target_goal:
+      x: 70.0
+      y: -1.75
+      heading: 0.0
+    actors:
+      - id: "cattle_01"
+        type: "CATTLE"
+        start_x: 30.0
+        start_y: -1.75
+        heading: 0.5
+        speed: 0.0
+        behavior: "STATIC"
+        trigger_time_s: 0.0
+      - id: "oncoming_bus"
+        type: "BUS"
+        start_x: 65.0
+        start_y: 1.75
+        heading: 3.1415
+        speed: 6.0
+        behavior: "ONCOMING"
+        trigger_time_s: 0.0
+
+  - id: "wrong_way"
+    name: "Wrong-Way Vehicle Emergency Avoidance Scenario"
+    description: "A two-wheeler drives in the wrong direction directly into the ego vehicle's travel lane, requiring immediate CBF safety barrier intervention and evasive steering."
+    duration_s: 12.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 8.0
+    target_goal:
+      x: 60.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "wrong_way_bike"
+        type: "TWO_WHEELER"
+        start_x: 28.0
+        start_y: 0.2
+        heading: 3.1415
+        speed: 8.5
+        behavior: "WRONG_WAY"
+        trigger_time_s: 0.5
+
+  - id: "pothole"
+    name: "Pothole & Degraded Road Swerve Scenario"
+    description: "Severe road surface anomalies requiring kinodynamic Hybrid A* trajectory swerving to maintain vehicle comfort and suspension safety constraints."
+    duration_s: 14.0
+    ego_start:
+      x: 0.0
+      y: 0.0
+      heading: 0.0
+      speed: 7.5
+    target_goal:
+      x: 65.0
+      y: 0.0
+      heading: 0.0
+    actors:
+      - id: "pothole_cluster_01"
+        type: "POTHOLE"
+        start_x: 22.0
+        start_y: -0.4
+        heading: 0.0
+        speed: 0.0
+        behavior: "STATIC"
+        trigger_time_s: 0.0
+      - id: "swerving_ahead_car"
+        type: "CAR"
+        start_x: 38.0
+        start_y: 0.8
+        heading: 0.0
+        speed: 7.0
+        behavior: "CUT_IN"
+        trigger_time_s: 1.0
+
+  # Legacy aliases for backward compatibility with existing test suite
   - id: "autorickshaw_cutin_blindspot"
     name: "Auto-Rickshaw Sudden Cut-in with Blindspot Pedestrian"
     description: "An autorickshaw abruptly overtakes and cuts across the ego vehicle's path while an occluded pedestrian crosses from behind a parked truck."

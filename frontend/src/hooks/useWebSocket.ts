@@ -15,6 +15,9 @@ export function useWebSocket(url: string = "ws://localhost:8000/ws/stream") {
   useEffect(() => {
     // Reset client simulator when scenario changes
     clientSimulator.reset(activeScenarioId);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(`scenario:${activeScenarioId}`);
+    }
   }, [activeScenarioId]);
 
   useEffect(() => {
