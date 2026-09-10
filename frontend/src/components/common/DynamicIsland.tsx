@@ -5,11 +5,14 @@ import { ShieldAlert, ShieldCheck, Zap, Radio, Compass, RotateCcw, AlertTriangle
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 
+import { useUIStore } from "../../store/uiStore";
+
 export const DynamicIsland: React.FC = () => {
   const latestFrame = useTelemetryStore((state) => state.latestFrame);
   const activeScenarioId = useTelemetryStore((state) => state.activeScenarioId);
   const isConnected = useTelemetryStore((state) => state.isConnected);
   const isReplayMode = usePlaybackStore((state) => state.isReplayMode);
+  const isJudgeMode = useUIStore((state) => state.isJudgeMode);
 
   const [expandedReason, setExpandedReason] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -17,7 +20,7 @@ export const DynamicIsland: React.FC = () => {
   const cbfActive = latestFrame?.control_command?.cbf_active ?? false;
   const minTtc = latestFrame?.metrics?.min_ttc ?? 5.0;
 
-  // Auto-expand on critical events
+  // Auto-expand on critical events or Judge Mode
   useEffect(() => {
     if (cbfActive) {
       setExpandedReason("cbf");
@@ -30,7 +33,7 @@ export const DynamicIsland: React.FC = () => {
     }
   }, [cbfActive, minTtc]);
 
-  const isExpanded = isHovered || expandedReason !== null;
+  const isExpanded = isHovered || expandedReason !== null || isJudgeMode;
 
   return (
     <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 pointer-events-auto font-mono">

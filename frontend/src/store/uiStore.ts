@@ -8,6 +8,7 @@ interface UIState {
   selectedActorId: string | null;
   isInspectorOpen: boolean;
   sidebarCollapsed: boolean;
+  isJudgeMode: boolean;
 
   // 3D Digital Twin Controls
   cameraMode: CameraMode;
@@ -18,6 +19,10 @@ interface UIState {
   showTrajectories: boolean;
   showRisk: boolean;
   showOcclusions: boolean;
+  showGnnAttention: boolean;
+  showCovariance: boolean;
+  showIntentEdges: boolean;
+  showSearchFrontier: boolean;
 
   // Accessibility & UI modes
   highContrastMode: boolean;
@@ -30,7 +35,22 @@ interface UIState {
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   setCameraMode: (mode: CameraMode) => void;
-  toggleLayer: (layer: "showGrid" | "showEgo" | "showBoxes" | "showLidar" | "showTrajectories" | "showRisk" | "showOcclusions") => void;
+  toggleLayer: (
+    layer:
+      | "showGrid"
+      | "showEgo"
+      | "showBoxes"
+      | "showLidar"
+      | "showTrajectories"
+      | "showRisk"
+      | "showOcclusions"
+      | "showGnnAttention"
+      | "showCovariance"
+      | "showIntentEdges"
+      | "showSearchFrontier"
+  ) => void;
+  toggleJudgeMode: () => void;
+  setJudgeMode: (enabled: boolean) => void;
   setHighContrast: (enabled: boolean) => void;
   setReducedMotion: (enabled: boolean) => void;
 }
@@ -40,6 +60,7 @@ export const useUIStore = create<UIState>((set) => ({
   selectedActorId: null,
   isInspectorOpen: false,
   sidebarCollapsed: false,
+  isJudgeMode: false,
 
   cameraMode: "orbit",
   showGrid: true,
@@ -49,6 +70,10 @@ export const useUIStore = create<UIState>((set) => ({
   showTrajectories: true,
   showRisk: true,
   showOcclusions: true,
+  showGnnAttention: true,
+  showCovariance: true,
+  showIntentEdges: true,
+  showSearchFrontier: true,
 
   highContrastMode: false,
   reducedMotion: false,
@@ -60,6 +85,16 @@ export const useUIStore = create<UIState>((set) => ({
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   setCameraMode: (mode) => set({ cameraMode: mode }),
   toggleLayer: (layer) => set((s) => ({ [layer]: !s[layer] })),
+  toggleJudgeMode: () =>
+    set((s) => ({
+      isJudgeMode: !s.isJudgeMode,
+      sidebarCollapsed: !s.isJudgeMode,
+    })),
+  setJudgeMode: (enabled) =>
+    set({
+      isJudgeMode: enabled,
+      sidebarCollapsed: enabled,
+    }),
   setHighContrast: (enabled) => set({ highContrastMode: enabled }),
   setReducedMotion: (enabled) => set({ reducedMotion: enabled }),
 }));

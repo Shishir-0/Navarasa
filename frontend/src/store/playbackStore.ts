@@ -15,6 +15,7 @@ interface PlaybackState {
   stepForward: (maxIndex: number) => void;
   stepBackward: () => void;
   seek: (frameId: number) => void;
+  resetReplay: () => void;
 }
 
 export const usePlaybackStore = create<PlaybackState>((set) => ({
@@ -40,5 +41,11 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     set(() => ({
       scrubberIndex: frameId,
       isReplayMode: true,
+    })),
+  resetReplay: () =>
+    set(() => ({
+      scrubberIndex: 0,
+      isReplayMode: false,
+      isPlaying: true,
     })),
 }));

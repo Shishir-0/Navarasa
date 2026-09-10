@@ -8,12 +8,16 @@ import { DynamicIsland } from './components/common/DynamicIsland';
 import { BootSequence } from './components/common/BootSequence';
 import { AppRouter } from './app/router';
 import { useWebSocket } from './hooks/useWebSocket';
+import { useJudgeMode } from './hooks/useJudgeMode';
 import { useUIStore } from './store/uiStore';
 import { AnimatePresence } from 'framer-motion';
 
 export const App: React.FC = () => {
   // Initialize real-time WebSocket connection to FastAPI backend (or auto fallback to client simulation)
   useWebSocket();
+
+  // Initialize global Judge Mode keyboard shortcut ('J')
+  useJudgeMode();
 
   const [hasBooted, setHasBooted] = useState<boolean>(() => {
     return sessionStorage.getItem('navrasa_booted') === 'true';
