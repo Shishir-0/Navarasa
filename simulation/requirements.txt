@@ -1,0 +1,14 @@
+# NAVRASA Simulation Pipeline — Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# CARLA Python API is NOT pip-installable.
+# Install it manually from your CARLA installation:
+#   cd <CARLA_ROOT>/PythonAPI/carla/dist/
+#   pip install carla-*.whl
+
+# Image/Video processing
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# Data handling
+numpy>=1.24.0

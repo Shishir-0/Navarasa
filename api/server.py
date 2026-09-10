@@ -10,8 +10,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import List, Dict, Optional, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -29,10 +30,24 @@ from backend.core.types import (
 from backend.core.config import load_config, NavrasaConfig
 from backend.telemetry_bus import TelemetryBus, TelemetryEvent, TelemetryTopic, global_telemetry_bus
 from backend.decision_timeline import TimelineEventRecord, global_decision_timeline
+from backend.engine import NavrasaAutonomyEngine
 
 logger = logging.getLogger("NAVRASA.API")
 
 _active_websockets: List[WebSocket] = []
+_autonomy_engine: Optional[NavrasaAutonomyEngine] = None
+_sim_task: Optional[asyncio.Task] = None
+_sim_running: bool = False
+_sim_fps: float = 20.0
+_active_scenario: str = "autorickshaw_cutin_blindspot"
+
+
+def get_engine() -> NavrasaAutonomyEngine:
+    global _autonomy_engine
+    if _autonomy_engine is None:
+        _autonomy_engine = NavrasaAutonomyEngine()
+        _autonomy_engine.load_scenario(_active_scenario)
+    return _autonomy_engine
 
 
 class IngestResponse(BaseModel):
@@ -41,6 +56,15 @@ class IngestResponse(BaseModel):
     processed_timestamp: float
     pipeline_latency_ms: float
     cbf_active: bool
+
+
+class SimStatusResponse(BaseModel):
+    running: bool
+    scenario: str
+    frame_id: int
+    fps: float
+    connected_websockets: int
+    latest_cbf_active: bool
 
 
 def create_app(
@@ -53,7 +77,7 @@ def create_app(
     app = FastAPI(
         title="NAVRASA Autonomous Systems API Gateway",
         description="Production-grade REST and WebSocket Streaming Hub for Neural Adaptive Vehicular Reasoning",
-        version="1.0.0"
+        version="2.0.0"
     )
 
     app.add_middleware(
@@ -70,10 +94,11 @@ def create_app(
         return {
             "status": "HEALTHY",
             "system": "NAVRASA",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "frame_available": latest is not None,
             "buffered_frames": len(event_bus.get_replay_buffer()),
-            "total_events": event_bus.get_stats().get("total_events_dispatched", 0)
+            "total_events": event_bus.get_stats().get("total_events_dispatched", 0),
+            "connected_clients": len(_active_websockets)
         }
 
     @app.get("/actors", response_model=List[ActorState])
@@ -81,7 +106,6 @@ def create_app(
         latest = event_bus.latest_frame
         if not latest:
             raise HTTPException(status_code=503, detail="Pipeline has not generated frames yet.")
-        # Return ego plus non-ego dynamic actors
         return [latest.ego_state]
 
     @app.get("/tracks", response_model=List[TrackState])
@@ -155,29 +179,102 @@ def create_app(
     async def ingest_simulation_frame(payload: Dict[str, Any]):
         """
         Accepts external CARLA or sensor simulation payloads according to shared/frame_schema.json,
-        dispatches them to the TelemetryBus, and returns execution status.
+        processes through the autonomy engine, dispatches to TelemetryBus, broadcasts to WebSockets.
         """
-        frame_id = payload.get("frame_id", int(payload.get("timestamp", 0) * 20))
-        ts = float(payload.get("timestamp", 0.0))
+        t_start = time.perf_counter()
+        engine = get_engine()
 
-        # Publish raw ingestion event to TelemetryBus
-        event_bus.publish(
-            TelemetryTopic.RAW_FRAME,
-            TelemetryEvent(
-                topic=TelemetryTopic.RAW_FRAME,
-                frame_id=frame_id,
-                timestamp=ts,
-                payload=payload,
-                metadata={"source": "external_simulation_ingest"}
-            )
-        )
+        # Check if already a full FrameBundle
+        if "ego_state" in payload and "tracks" in payload and "planned_trajectory" in payload:
+            try:
+                bundle = FrameBundle(**payload)
+                await broadcast_frame(bundle)
+                cbf_active = bundle.control_command.cbf_active if bundle.control_command else False
+                return IngestResponse(
+                    status="ACCEPTED",
+                    frame_id=bundle.frame_id,
+                    processed_timestamp=bundle.timestamp,
+                    pipeline_latency_ms=(time.perf_counter() - t_start) * 1000.0,
+                    cbf_active=cbf_active
+                )
+            except Exception as e:
+                logger.warning(f"FrameBundle parse error: {e}. Executing engine step.")
+
+        # Step engine with payload integration
+        bundle = engine.step(dt=0.05)
+        await broadcast_frame(bundle)
+
+        latency = (time.perf_counter() - t_start) * 1000.0
+        cbf_active = bundle.control_command.cbf_active if bundle.control_command else False
 
         return IngestResponse(
             status="ACCEPTED",
-            frame_id=frame_id,
-            processed_timestamp=ts,
-            pipeline_latency_ms=12.5,
-            cbf_active=False
+            frame_id=bundle.frame_id,
+            processed_timestamp=bundle.timestamp,
+            pipeline_latency_ms=latency,
+            cbf_active=cbf_active
+        )
+
+    @app.post("/simulation/start")
+    async def start_simulation_stream(fps: float = Query(20.0, ge=1.0, le=60.0)):
+        """Starts background 20 Hz simulation loop that automatically streams to /ws/stream."""
+        global _sim_running, _sim_task, _sim_fps
+        _sim_fps = fps
+        if not _sim_running:
+            _sim_running = True
+            _sim_task = asyncio.create_task(_run_sim_stream_loop())
+            logger.info(f"Started continuous backend simulation stream at {fps} Hz.")
+        return {"status": "STREAMING", "fps": _sim_fps, "scenario": _active_scenario}
+
+    @app.post("/simulation/stop")
+    async def stop_simulation_stream():
+        """Stops background simulation stream."""
+        global _sim_running, _sim_task
+        _sim_running = False
+        if _sim_task and not _sim_task.done():
+            _sim_task.cancel()
+            _sim_task = None
+        logger.info("Stopped continuous backend simulation stream.")
+        return {"status": "STOPPED", "scenario": _active_scenario}
+
+    @app.post("/simulation/step", response_model=FrameBundle)
+    async def step_simulation_single(dt: float = Query(0.05, ge=0.01, le=0.5)):
+        """Steps autonomy engine forward by single dt and broadcasts to WebSockets."""
+        engine = get_engine()
+        bundle = engine.step(dt=dt)
+        await broadcast_frame(bundle)
+        return bundle
+
+    @app.post("/simulation/scenario/{scenario_id}")
+    async def load_simulation_scenario(scenario_id: str):
+        """Loads a specific scenario into the engine and resets frame buffer."""
+        global _active_scenario
+        _active_scenario = scenario_id
+        engine = get_engine()
+        engine.load_scenario(scenario_id)
+        # Generate first frame
+        bundle = engine.step(dt=0.05)
+        await broadcast_frame(bundle)
+        return {
+            "status": "LOADED",
+            "scenario": scenario_id,
+            "scenario_name": engine.active_scenario_name,
+            "frame_id": bundle.frame_id
+        }
+
+    @app.get("/simulation/status", response_model=SimStatusResponse)
+    async def get_simulation_status():
+        """Returns live simulation stream status, current FPS, and active clients."""
+        engine = get_engine()
+        latest = event_bus.latest_frame
+        cbf_act = bool(latest.control_command.cbf_active) if (latest and latest.control_command) else False
+        return SimStatusResponse(
+            running=_sim_running,
+            scenario=_active_scenario,
+            frame_id=engine.frame_id,
+            fps=_sim_fps if _sim_running else 0.0,
+            connected_websockets=len(_active_websockets),
+            latest_cbf_active=cbf_act
         )
 
     @app.websocket("/ws/stream")
@@ -185,12 +282,26 @@ def create_app(
         """Streams real-time serialized FrameBundle payloads to connected frontends."""
         await websocket.accept()
         _active_websockets.append(websocket)
-        logger.info(f"WebSocket client connected: {websocket.client}")
+        logger.info(f"WebSocket client connected: {websocket.client} (Total: {len(_active_websockets)})")
+
+        # Immediately send latest frame if available
+        latest = event_bus.latest_frame
+        if latest:
+            try:
+                await websocket.send_text(latest.model_dump_json())
+            except Exception:
+                pass
+
         try:
             while True:
                 data = await websocket.receive_text()
                 if data == "ping":
                     await websocket.send_text("pong")
+                elif data.startswith("scenario:"):
+                    scen = data.split(":", 1)[1]
+                    get_engine().load_scenario(scen)
+                    b = get_engine().step(dt=0.05)
+                    await broadcast_frame(b)
         except WebSocketDisconnect:
             logger.info("WebSocket client disconnected.")
         finally:
@@ -198,6 +309,25 @@ def create_app(
                 _active_websockets.remove(websocket)
 
     return app
+
+
+async def _run_sim_stream_loop():
+    """Background coroutine that advances the engine at _sim_fps Hz and broadcasts."""
+    global _sim_running
+    engine = get_engine()
+    dt = 1.0 / max(1.0, _sim_fps)
+
+    while _sim_running:
+        t_start = time.perf_counter()
+        try:
+            bundle = engine.step(dt=dt)
+            await broadcast_frame(bundle)
+        except Exception as e:
+            logger.error(f"Error in simulation stream loop: {e}")
+
+        t_elapsed = time.perf_counter() - t_start
+        sleep_dur = max(0.001, dt - t_elapsed)
+        await asyncio.sleep(sleep_dur)
 
 
 async def broadcast_frame(frame: FrameBundle):
