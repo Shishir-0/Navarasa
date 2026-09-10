@@ -6,6 +6,8 @@ import { ReplayController } from './components/layout/ReplayController';
 import { SafetyOverrideOverlay } from './components/common/SafetyOverrideOverlay';
 import { DynamicIsland } from './components/common/DynamicIsland';
 import { BootSequence } from './components/common/BootSequence';
+import { ScenarioCinematicOverlay } from './components/layout/ScenarioCinematicOverlay';
+import { LivePerformanceConsole } from './components/analytics/LivePerformanceConsole';
 import { AppRouter } from './app/router';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useJudgeMode } from './hooks/useJudgeMode';
@@ -50,17 +52,23 @@ export const App: React.FC = () => {
         {!hasBooted && <BootSequence onComplete={handleBootComplete} />}
       </AnimatePresence>
 
+      {/* 2. Scenario 3-2-1 Countdown & Post-Run Debrief Overlay */}
+      <ScenarioCinematicOverlay />
+
+      {/* 3. Floating Live Performance Console (FPS, Latency, Telemetry Rates) */}
+      <LivePerformanceConsole />
+
       <div className="flex h-screen w-screen bg-[#05070B] text-[#F5F7FA] overflow-hidden font-sans select-none relative vision-grid-ambient">
-        {/* 2. Floating Dynamic Island (VisionOS Top Center) */}
+        {/* 4. Floating Dynamic Island (VisionOS Top Center) */}
         <DynamicIsland />
 
-        {/* 3. Cinematic CBF Safety Barrier Shockwave & Toast Overlay */}
+        {/* 5. Cinematic CBF Safety Barrier Shockwave & Toast Overlay */}
         <SafetyOverrideOverlay />
 
-        {/* 4. VisionOS Translucent Left Navigation Sidebar */}
+        {/* 6. VisionOS Translucent Left Navigation Sidebar */}
         <Sidebar />
 
-        {/* 5. Main Application Operations Area */}
+        {/* 7. Main Application Operations Area */}
         <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
           {/* Top Mission Control Floating Header */}
           <Header />
