@@ -948,66 +948,25 @@ export const DigitalTwinCanvas: React.FC<{ className?: string; height?: string }
 
           {/* PiP Viewport */}
           {!pipMinimized && (
-            <div className="relative w-full h-[calc(100%-36px)] bg-black/80 flex items-center justify-center overflow-hidden">
+            <div className="relative w-full h-[calc(100%-36px)] bg-[#05070B] flex items-center justify-center overflow-hidden">
               {activePip === "camera" && (
-                <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-b from-space-900 to-space-950">
-                  {/* Simulated RGB Camera Stream with Horizon line and AI Bounding Boxes */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                    <div className="w-full h-0.5 bg-cyan-400/50" />
-                  </div>
-
-                  {/* 2D AI Bounding Boxes overlay */}
-                  {currentFrame?.tracks?.slice(0, 4).map((trk, idx) => {
-                    const leftPct = 30 + ((idx * 25) % 50);
-                    const topPct = 35 + ((idx * 15) % 30);
-                    return (
-                      <div
-                        key={trk.track_id}
-                        className="absolute border border-emerald-400 bg-emerald-500/10 rounded px-1.5 py-0.5 text-[9px] font-mono text-emerald-300"
-                        style={{ left: `${leftPct}%`, top: `${topPct}%` }}
-                      >
-                        <span>{trk.actor_type}</span>
-                        <span className="block text-[8px] text-emerald-400/70">{trk.speed?.toFixed(1)} m/s</span>
-                      </div>
-                    );
-                  })}
-
-                  <div className="absolute bottom-2 left-2 text-[10px] font-mono text-white/60">
-                    RGB LIVE (1080p 60FPS)
-                  </div>
+                <div className="relative w-full h-full bg-[#05070B] overflow-hidden flex flex-col items-center justify-center">
+                  {/* Real-time Perspective Camera HUD Canvas */}
+                  <CameraHUDCanvas currentFrame={currentFrame} />
                 </div>
               )}
 
               {activePip === "lidar" && (
-                <div className="relative w-full h-full flex items-center justify-center bg-space-950">
-                  {/* Simulated 360 LiDAR Polar Point Scope */}
-                  <div className="w-32 h-32 rounded-full border border-cyan-500/20 relative flex items-center justify-center">
-                    <div className="w-20 h-20 rounded-full border border-cyan-500/30" />
-                    <div className="w-10 h-10 rounded-full border border-cyan-500/40" />
-                    <div className="w-1 h-1 rounded-full bg-emerald-400" />
-                    {/* Rotating laser sweep */}
-                    <div className="absolute inset-0 rounded-full border-t-2 border-cyan-400/60 animate-spin" />
-                  </div>
-                  <div className="absolute bottom-2 left-2 text-[10px] font-mono text-cyan-400">
-                    LiDAR: 32 CHANNELS
-                  </div>
+                <div className="relative w-full h-full bg-[#05070B] overflow-hidden flex flex-col items-center justify-center">
+                  {/* Real-time 360 LiDAR Point Cloud Polar Canvas */}
+                  <LidarHUDCanvas currentFrame={currentFrame} />
                 </div>
               )}
 
               {activePip === "radar" && (
-                <div className="relative w-full h-full flex items-center justify-center bg-space-950">
-                  {/* Circular Radar Scope */}
-                  <div className="w-32 h-32 rounded-full border border-emerald-500/30 relative flex items-center justify-center">
-                    <div className="w-24 h-24 rounded-full border border-emerald-500/20" />
-                    <div className="w-12 h-12 rounded-full border border-emerald-500/20" />
-                    <div className="absolute w-full h-0.5 bg-emerald-500/30" />
-                    <div className="absolute h-full w-0.5 bg-emerald-500/30" />
-                    {/* Rotating Radar Sweep */}
-                    <div className="absolute inset-0 rounded-full border-r-2 border-emerald-400 animate-spin" style={{ animationDuration: "2s" }} />
-                  </div>
-                  <div className="absolute bottom-2 left-2 text-[10px] font-mono text-emerald-400">
-                    RADAR: 77 GHz DOPPLER
-                  </div>
+                <div className="relative w-full h-full bg-[#05070B] overflow-hidden flex flex-col items-center justify-center">
+                  {/* Real-time 77 GHz Doppler PPI Radar Canvas */}
+                  <RadarHUDCanvas currentFrame={currentFrame} />
                 </div>
               )}
             </div>
@@ -1038,5 +997,402 @@ export const DigitalTwinCanvas: React.FC<{ className?: string; height?: string }
         </div>
       </div>
     </div>
+  );
+};
+
+// ==========================================
+// 1. Live Perspective Camera HUD Canvas
+// ==========================================
+const CameraHUDCanvas: React.FC<{ currentFrame: FrameBundle | null }> = ({ currentFrame }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const render = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Dark futuristic camera background with subtle vignette
+      ctx.fillStyle = '#06090e';
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw synthetic perspective road ground
+      const horizonY = h * 0.48 + ((currentFrame?.control_command?.steering_angle || 0) * 8);
+      const grad = ctx.createLinearGradient(0, horizonY, 0, h);
+      grad.addColorStop(0, '#0a1018');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, horizonY, w, h - horizonY);
+
+      // Horizon line
+      ctx.strokeStyle = 'rgba(77, 163, 255, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY);
+      ctx.lineTo(w, horizonY);
+      ctx.stroke();
+
+      // Pitch Ladder ticks
+      [-20, -10, 10, 20].forEach((pitch) => {
+        const py = horizonY + (pitch * 1.8);
+        if (py > 20 && py < h - 20) {
+          ctx.strokeStyle = 'rgba(77, 163, 255, 0.2)';
+          ctx.beginPath();
+          ctx.moveTo(w * 0.42, py);
+          ctx.lineTo(w * 0.48, py);
+          ctx.moveTo(w * 0.52, py);
+          ctx.lineTo(w * 0.58, py);
+          ctx.stroke();
+        }
+      });
+
+      // Perspective road guide lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, horizonY);
+      ctx.lineTo(w * 0.1, h);
+      ctx.moveTo(w * 0.5, horizonY);
+      ctx.lineTo(w * 0.9, h);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Center crosshair / aim reticle
+      ctx.strokeStyle = 'rgba(77, 163, 255, 0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5 - 12, horizonY);
+      ctx.lineTo(w * 0.5 + 12, horizonY);
+      ctx.moveTo(w * 0.5, horizonY - 12);
+      ctx.lineTo(w * 0.5, horizonY + 12);
+      ctx.stroke();
+
+      // Project and draw 2D AI bounding boxes from active tracks
+      if (currentFrame?.tracks && currentFrame.ego_state) {
+        const egoPos = currentFrame.ego_state.position;
+        currentFrame.tracks.forEach((trk, idx) => {
+          const dx = trk.position.x - egoPos.x;
+          const dy = trk.position.y - egoPos.y; // Forward distance along road
+          if (dy > 1 && dy < 60) {
+            // Perspective projection formula
+            const scale = Math.min(2.5, Math.max(0.3, 18 / dy));
+            const screenX = (w * 0.5) + (dx * 16 * scale);
+            const screenY = horizonY + (dy * 2.2 * scale) - (20 * scale);
+            const boxW = Math.max(24, (trk.bbox?.width || 1.8) * 18 * scale);
+            const boxH = Math.max(28, (trk.bbox?.height || 1.5) * 22 * scale);
+
+            if (screenX > 10 && screenX < w - 10 && screenY > 10 && screenY < h - 10) {
+              // Bounding Box
+              ctx.strokeStyle = '#34D399';
+              ctx.lineWidth = 1.5;
+              ctx.strokeRect(screenX - boxW / 2, screenY - boxH / 2, boxW, boxH);
+
+              // Corner accents
+              ctx.fillStyle = '#34D399';
+              const cornerSize = 4;
+              ctx.fillRect(screenX - boxW / 2 - 1, screenY - boxH / 2 - 1, cornerSize, 2);
+              ctx.fillRect(screenX - boxW / 2 - 1, screenY - boxH / 2 - 1, 2, cornerSize);
+              ctx.fillRect(screenX + boxW / 2 - cornerSize + 1, screenY - boxH / 2 - 1, cornerSize, 2);
+              ctx.fillRect(screenX + boxW / 2 - 1, screenY - boxH / 2 - 1, 2, cornerSize);
+
+              // Track AI Label
+              ctx.fillStyle = 'rgba(5, 7, 11, 0.85)';
+              ctx.fillRect(screenX - boxW / 2, screenY - boxH / 2 - 16, boxW + 20, 14);
+              ctx.fillStyle = '#34D399';
+              ctx.font = '9px monospace';
+              ctx.fillText(`${trk.actor_type.substring(0, 4)} #${trk.track_id}`, screenX - boxW / 2 + 2, screenY - boxH / 2 - 5);
+
+              // Distance & Velocity
+              ctx.fillStyle = '#F5F7FA';
+              ctx.font = '8px monospace';
+              ctx.fillText(`${dy.toFixed(1)}m | ${(trk.speed * 3.6).toFixed(0)}kph`, screenX - boxW / 2 + 2, screenY + boxH / 2 + 10);
+            }
+          }
+        });
+      }
+
+      // Camera HUD Overlays
+      ctx.fillStyle = 'rgba(5, 7, 11, 0.7)';
+      ctx.fillRect(0, 0, w, 22);
+      ctx.fillRect(0, h - 20, w, 20);
+
+      ctx.fillStyle = '#4DA3FF';
+      ctx.font = '9px monospace';
+      ctx.fillText('CAM-FRONT • 1920x1080 • FOV 90°', 8, 14);
+
+      ctx.fillStyle = '#34D399';
+      ctx.fillText('LIVE AI DETECTION', w - 105, 14);
+
+      ctx.fillStyle = '#9BA6B2';
+      const timeStr = currentFrame ? `T+${currentFrame.timestamp.toFixed(2)}s` : 'SYNCING';
+      ctx.fillText(`FPS: 60 | ${timeStr}`, 8, h - 6);
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animId);
+  }, [currentFrame]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={320}
+      height={200}
+      className="w-full h-full object-cover"
+    />
+  );
+};
+
+// ==========================================
+// 2. Live 360 LiDAR Point Cloud Polar Canvas
+// ==========================================
+const LidarHUDCanvas: React.FC<{ currentFrame: FrameBundle | null }> = ({ currentFrame }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sweepAngleRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const render = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxR = Math.min(cx, cy) - 15;
+
+      // Dark background with radial glow
+      ctx.fillStyle = '#05070B';
+      ctx.fillRect(0, 0, w, h);
+
+      // Concentric Range Rings (10m, 20m, 30m, 40m)
+      [0.25, 0.5, 0.75, 1.0].forEach((ratio, idx) => {
+        const r = maxR * ratio;
+        ctx.strokeStyle = 'rgba(77, 163, 255, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(77, 163, 255, 0.4)';
+        ctx.font = '8px monospace';
+        ctx.fillText(`${(idx + 1) * 10}m`, cx + 3, cy - r + 9);
+      });
+
+      // Crosshair Azimuth lines
+      ctx.strokeStyle = 'rgba(77, 163, 255, 0.15)';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - maxR);
+      ctx.lineTo(cx, cy + maxR);
+      ctx.moveTo(cx - maxR, cy);
+      ctx.lineTo(cx + maxR, cy);
+      ctx.stroke();
+
+      // Ego center vehicle footprint
+      ctx.fillStyle = '#34D399';
+      ctx.fillRect(cx - 3, cy - 6, 6, 12);
+
+      // Rotating Laser Beam
+      sweepAngleRef.current = (sweepAngleRef.current + 0.08) % (Math.PI * 2);
+      const sweepAngle = sweepAngleRef.current;
+
+      const sweepGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+      sweepGrad.addColorStop(0, 'rgba(77, 163, 255, 0.4)');
+      sweepGrad.addColorStop(1, 'rgba(77, 163, 255, 0.0)');
+      ctx.fillStyle = sweepGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, maxR, sweepAngle - 0.4, sweepAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      // Real-time LiDAR Point Cloud Returns from active tracks
+      if (currentFrame?.tracks && currentFrame.ego_state) {
+        const egoPos = currentFrame.ego_state.position;
+        currentFrame.tracks.forEach((trk) => {
+          const dx = trk.position.x - egoPos.x;
+          const dy = trk.position.y - egoPos.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 40) {
+            const px = cx + (dx / 40) * maxR;
+            const py = cy - (dy / 40) * maxR;
+
+            // Generate dense point cluster for actor body
+            const pointCount = 10;
+            for (let i = 0; i < pointCount; i++) {
+              const ox = (Math.sin(i * 1.7) * 4);
+              const oy = (Math.cos(i * 2.3) * 4);
+              // Elevation color gradient
+              ctx.fillStyle = i % 3 === 0 ? '#34D399' : i % 3 === 1 ? '#4DA3FF' : '#FBBF24';
+              ctx.beginPath();
+              ctx.arc(px + ox, py + oy, 1.4, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        });
+      }
+
+      // HUD Text
+      ctx.fillStyle = '#4DA3FF';
+      ctx.font = '9px monospace';
+      ctx.fillText('LiDAR: 32-CH • 1.2M PTS/S', 8, 14);
+
+      ctx.fillStyle = '#34D399';
+      ctx.fillText('20 Hz SCAN', w - 65, 14);
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animId);
+  }, [currentFrame]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={320}
+      height={200}
+      className="w-full h-full object-cover"
+    />
+  );
+};
+
+// ==========================================
+// 3. Live 77 GHz Doppler Radar PPI Scope Canvas
+// ==========================================
+const RadarHUDCanvas: React.FC<{ currentFrame: FrameBundle | null }> = ({ currentFrame }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const radarSweepAngle = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const render = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxR = Math.min(cx, cy) - 15;
+
+      // Dark Radar Green Phosphor Scope Background
+      ctx.fillStyle = '#030806';
+      ctx.fillRect(0, 0, w, h);
+
+      // Concentric Range Rings (10m, 20m, 30m)
+      [0.33, 0.66, 1.0].forEach((ratio, idx) => {
+        const r = maxR * ratio;
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(52, 211, 153, 0.5)';
+        ctx.font = '8px monospace';
+        ctx.fillText(`${(idx + 1) * 10}m`, cx + 4, cy - r + 9);
+      });
+
+      // Polar spokes (every 45 degrees)
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.12)';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR);
+        ctx.stroke();
+      }
+
+      // Rotating Radar Beam
+      radarSweepAngle.current = (radarSweepAngle.current + 0.05) % (Math.PI * 2);
+      const angle = radarSweepAngle.current;
+
+      const beamGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+      beamGrad.addColorStop(0, 'rgba(52, 211, 153, 0.5)');
+      beamGrad.addColorStop(1, 'rgba(52, 211, 153, 0.0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, maxR, angle - 0.5, angle);
+      ctx.closePath();
+      ctx.fill();
+
+      // Plot Real Radar Doppler Targets with Velocity Vectors
+      if (currentFrame?.tracks && currentFrame.ego_state) {
+        const egoPos = currentFrame.ego_state.position;
+        currentFrame.tracks.forEach((trk) => {
+          const dx = trk.position.x - egoPos.x;
+          const dy = trk.position.y - egoPos.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 35) {
+            const rx = cx + (dx / 35) * maxR;
+            const ry = cy - (dy / 35) * maxR;
+
+            // Target Blip
+            ctx.fillStyle = '#34D399';
+            ctx.beginPath();
+            ctx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Confidence Halo
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(rx, ry, 7, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Doppler Velocity Vector Arrow
+            const vx = (trk.velocity?.x || 0) * 1.5;
+            const vy = (trk.velocity?.y || 0) * 1.5;
+            ctx.strokeStyle = trk.speed > 5 ? '#FF5C7A' : '#34D399';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx + vx, ry - vy);
+            ctx.stroke();
+
+            // Doppler speed tag
+            ctx.fillStyle = '#F5F7FA';
+            ctx.font = '8px monospace';
+            ctx.fillText(`${(trk.speed * 3.6).toFixed(0)}kph`, rx + 8, ry + 3);
+          }
+        });
+      }
+
+      // HUD Text
+      ctx.fillStyle = '#34D399';
+      ctx.font = '9px monospace';
+      ctx.fillText('RADAR: 77 GHz FMCW • DOPPLER FFT', 8, 14);
+
+      ctx.fillStyle = '#9BA6B2';
+      ctx.fillText('SNR: 24 dB', w - 65, 14);
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animId);
+  }, [currentFrame]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={320}
+      height={200}
+      className="w-full h-full object-cover"
+    />
   );
 };
